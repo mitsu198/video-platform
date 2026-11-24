@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import mux from 'mux-embed';
 import { createRoot } from 'react-dom/client';
 import { Search, House, Compass, PlaySquare, Clock3, ThumbsUp, Flame, Clapperboard, Menu, Plus, Bell, Mic, MoreHorizontal, Play, X, ChevronDown, Film, Radio, UserRound, Settings, History, Bookmark, ArrowUpRight } from 'lucide-react';
 import './styles.css';
@@ -21,6 +22,33 @@ const shorts = [
   {id:5,title:'Ночной город с высоты',views:'1 млн',image:'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=600&q=85'},
 ];
 const categories=['Все','Игры','Музыка','Технологии','Путешествия','Еда','Развлечения','Обучение','Спорт'];
+
+function MuxVideoPlayer({ src, videoId, title, channel }) {
+ const videoRef = useRef(null);
+ useEffect(() => {
+  const video = videoRef.current;
+  const envKey = import.meta.env.VITE_MUX_ENV_KEY;
+  if (!video || !src || !envKey) return;
+  mux.monitor(video, {
+   debug: false,
+   respectDoNotTrack: true,
+   disableCookies: true,
+   data: {
+    env_key: envKey,
+    player_name: 'MIRVEX HTML5 Player',
+    player_version: '1.0.0',
+    player_init_time: mux.utils.now(),
+    video_id: String(videoId ?? 'unknown'),
+    video_title: title || 'Untitled video',
+    video_series: channel || 'MIRVEX',
+    video_stream_type: 'on-demand'
+   }
+  });
+  return () => { video.mux?.destroy?.(); };
+ }, [src, videoId, title, channel]);
+ return <video ref={videoRef} className="mux-video" src={src} controls playsInline preload="metadata" />;
+}
+
 function App(){
  const [active,setActive]=useState('Главная');
  const [category,setCategory]=useState('Все');
@@ -60,7 +88,7 @@ function App(){
     </>}
    </main>
   </div>
-  {selected&&<div className="modal-backdrop" onClick={()=>setSelected(null)}><div className="video-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setSelected(null)}><X/></button><div className="modal-player"><img src={selected.image}/><div className="player-overlay"><Play fill="white" size={42}/></div><span className="demo-label">ПРЕВЬЮ · ДЕМО</span></div><div className="modal-details"><h2>{selected.title}</h2><div className="modal-meta">{selected.channel} · {selected.views}</div><p>Это демонстрационный просмотр интерфейса. Подключение настоящего видеоплеера, загрузки и хранения видео добавим следующим этапом.</p><button className={'like-btn '+(liked.includes(selected.id)?'is-liked':'')} onClick={()=>setLiked(x=>x.includes(selected.id)?x.filter(i=>i!==selected.id):[...x,selected.id])}><ThumbsUp size={17}/> {liked.includes(selected.id)?'Нравится':'Нравится'}</button></div></div></div>}
+  {selected&&<div className="modal-backdrop" onClick={()=>setSelected(null)}><div className="video-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setSelected(null)}><X/></button><div className="modal-player">{selected.videoUrl ? <MuxVideoPlayer src={selected.videoUrl} videoId={selected.id} title={selected.title} channel={selected.channel}/> : <><img src={selected.image}/><div className="player-overlay"><Play fill="white" size={42}/></div><span className="demo-label">ПРЕВЬЮ · ДЕМО</span></>}</div><div className="modal-details"><h2>{selected.title}</h2><div className="modal-meta">{selected.channel} · {selected.views}</div><p>Это демонстрационный просмотр интерфейса. Подключение настоящего видеоплеера, загрузки и хранения видео добавим следующим этапом.</p><button className={'like-btn '+(liked.includes(selected.id)?'is-liked':'')} onClick={()=>setLiked(x=>x.includes(selected.id)?x.filter(i=>i!==selected.id):[...x,selected.id])}><ThumbsUp size={17}/> {liked.includes(selected.id)?'Нравится':'Нравится'}</button></div></div></div>}
   <footer className="mobile-nav">{[['Главная',House],['Shorts',Flame],['Подписки',PlaySquare],['Вы',UserRound]].map(([n,I])=><button key={n} className={active===n?'mobile-active':''} onClick={()=>setActive(n)}><I size={21}/><span>{n}</span></button>)}</footer>
  </div>
 }
