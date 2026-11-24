@@ -48,7 +48,9 @@ async function initDb() {
       duration REAL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    ALTER TABLE videos ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;
     CREATE INDEX IF NOT EXISTS videos_owner_created_idx ON videos(owner_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS videos_public_created_idx ON videos(is_public, status, created_at DESC);
   `);
 }
 
@@ -145,11 +147,35 @@ app.get('/api/videos/:id/cover', requireDb, async (req,res) => {
   if(!r.rowCount||!r.rows[0].cover) return res.status(404).end();
   res.set('Content-Type',r.rows[0].cover_type||'image/jpeg').set('Cache-Control','public, max-age=3600').send(r.rows[0].cover);
 });
+
+app.get('/api/public/videos', requireDb, async (_req,res) => {
+  const r=await pool.query(`SELECT v.id,v.owner_id,v.title,v.playback_id,v.duration,v.created_at,v.cover,
+    u.username
+    FROM videos v JOIN users u ON u.id=v.owner_id
+    WHERE v.is_public=TRUE AND v.status='ready' AND v.playback_id IS NOT NULL
+    ORDER BY v.created_at DESC LIMIT 100`);
+  res.json({videos:r.rows.map(v=>({
+    id:'db-'+v.id, ownerId:String(v.owner_id), title:v.title, channel:v.username,
+    views:'Публичное видео', time:new Date(v.created_at).toLocaleDateString('ru-RU'),
+    duration:v.duration?new Date(v.duration*1000).toISOString().slice(14,19):'',
+    image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',
+    avatar:(v.username||'M').slice(0,1).toUpperCase(), category:'Для вас',
+    videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8', isPublic:true
+  }))});
+});
+app.post('/api/videos/:id/publish', requireDb, auth, async (req,res) => {
+  const isPublic=req.body?.isPublic;
+  if(typeof isPublic!=='boolean') return res.status(400).json({error:'Укажи статус публикации'});
+  const r=await pool.query('UPDATE videos SET is_public=$1 WHERE id=$2 AND owner_id=$3 AND status=\'ready\' RETURNING id,is_public',[isPublic,req.params.id,req.user.id]);
+  if(!r.rowCount) return res.status(404).json({error:'Видео не найдено'});
+  res.json({ok:true,isPublic:r.rows[0].is_public});
+});
+
 app.get('/api/videos', requireDb, auth, async (req,res) => {
-  const r=await pool.query(`SELECT id,title,upload_id,asset_id,playback_id,status,duration,created_at,
+  const r=await pool.query(`SELECT id,owner_id,title,upload_id,asset_id,playback_id,status,duration,created_at,is_public,
     CASE WHEN cover IS NOT NULL THEN '/api/videos/'||id||'/cover' ELSE NULL END AS cover_url
     FROM videos WHERE owner_id=$1 AND playback_id IS NOT NULL AND status='ready' ORDER BY created_at DESC`,[req.user.id]);
-  res.json({videos:r.rows.map(v=>({...v,id:'db-'+v.id,videoUrl:v.playback_id?'https://stream.mux.com/'+v.playback_id+'.m3u8':null,image:v.cover_url?'https://mirvex-api.onrender.com'+v.cover_url:'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',channel:'Мой канал',views:'Ваше видео',time:new Date(v.created_at).toLocaleDateString('ru-RU'),category:'Мои видео',avatar:'М'}))});
+  res.json({videos:r.rows.map(v=>({...v,id:'db-'+v.id,ownerId:String(v.owner_id),isPublic:v.is_public,videoUrl:v.playback_id?'https://stream.mux.com/'+v.playback_id+'.m3u8':null,image:v.cover_url?'https://mirvex-api.onrender.com'+v.cover_url:'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',channel:'Мой канал',views:'Ваше видео',time:new Date(v.created_at).toLocaleDateString('ru-RU'),category:'Мои видео',avatar:'М'}))});
 });
 
 app.use((err,_req,res,_next)=>res.status(400).json({error:err.message||'Ошибка запроса'}));
