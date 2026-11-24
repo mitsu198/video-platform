@@ -7,7 +7,7 @@ import './styles.css';
 
 const videos = [];
 const shorts = [];
-const categories=['Все','Мои видео'];
+const categories=['Для вас','Мои видео'];
 
 function MuxVideoPlayer({ src, videoId, title, channel }) {
  const videoRef = useRef(null);
@@ -126,19 +126,23 @@ function App(){
  const [token,setToken]=useState(()=>localStorage.getItem('mirvex_token')||'');
  const [user,setUser]=useState(null);
  const [uploaded,setUploaded]=useState([]);
+ const [publicVideos,setPublicVideos]=useState([]);
+ const loadPublicVideos=async()=>{const r=await fetch('https://mirvex-api.onrender.com/api/public/videos');const d=await r.json();if(r.ok)setPublicVideos(d.videos||[]);};
  const loadVideos=async t=>{const r=await fetch('https://mirvex-api.onrender.com/api/videos',{headers:{Authorization:'Bearer '+t}});const d=await r.json();if(r.ok)setUploaded(d.videos||[]);};
- const onAuth=d=>{localStorage.setItem('mirvex_token',d.token);setToken(d.token);setUser(d.user);loadVideos(d.token);};
+ const onAuth=d=>{localStorage.setItem('mirvex_token',d.token);setToken(d.token);setUser(d.user);loadVideos(d.token);loadPublicVideos();};
  const logout=()=>{localStorage.removeItem('mirvex_token');setToken('');setUser(null);setUploaded([]);};
+ useEffect(()=>{loadPublicVideos();},[]);
  useEffect(()=>{if(!token)return;fetch('https://mirvex-api.onrender.com/api/auth/me',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():Promise.reject()).then(d=>{setUser(d.user);loadVideos(token)}).catch(()=>logout());},[]);
- const addUploaded=item=>{setUploaded(list=>[item,...list]);setSelected(item);setUploadOpen(false);};
+ const addUploaded=item=>{setUploaded(list=>[item,...list]);setCategory('Мои видео');setSelected(item);setUploadOpen(false);};
+ const togglePublish=async video=>{try{const next=!video.isPublic;const r=await fetch('https://mirvex-api.onrender.com/api/videos/'+video.id.replace('db-','')+'/publish',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({isPublic:next})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось изменить публикацию');setUploaded(items=>items.map(v=>v.id===video.id?{...v,isPublic:next}:v));setSelected(v=>v?.id===video.id?{...v,isPublic:next}:v);await loadPublicVideos();}catch(e){alert(e.message);}};
  const [category,setCategory]=useState('Все');
  const [query,setQuery]=useState('');
  const [searchOpen,setSearchOpen]=useState(false);
  const [selected,setSelected]=useState(null);
  const [sidebar,setSidebar]=useState(true);
  const [liked,setLiked]=useState([]);
- const allVideos=uploaded;
- const filtered=useMemo(()=>allVideos.filter(v=>(category==='Все'||v.category===category)&& (v.title+' '+v.channel).toLowerCase().includes(query.toLowerCase())),[category,query,uploaded]);
+ const allVideos=category==='Мои видео'?uploaded:publicVideos;
+ const filtered=useMemo(()=>allVideos.filter(v=> (v.title+' '+v.channel).toLowerCase().includes(query.toLowerCase())),[category,query,uploaded]);
  const nav=[['Главная',House],['Shorts',Flame],['Подписки',PlaySquare]];
  const library=[['История',History],['Плейлисты',Bookmark],['Понравившиеся',ThumbsUp]];
  return <div className="app">
@@ -160,17 +164,17 @@ function App(){
    </aside>}
    <main className="main">
     {active==='Shorts'?<><div className="page-heading"><div><div className="eyebrow">БЫСТРО И ПО ДЕЛУ</div><h1>Shorts</h1><p>Вертикальные видео, которые затягивают.</p></div></div><div className="shorts-grid">{shorts.map(s=><button className="short-card" key={s.id} onClick={()=>setSelected({title:s.title,channel:'MIRVEX Shorts',views:s.views+' просмотров',time:'Сейчас',duration:'0:32',image:s.image,avatar:'✦'})}><img src={s.image}/><span className="short-play"><Play fill="white"/></span><strong>{s.title}</strong><small>{s.views} просмотров</small></button>)}</div></>:<>
-    <section className="welcome"><div><div className="eyebrow">ТВОЯ ВИДЕОПЛАТФОРМА</div><h1>{active==='Главная'?'Твоя библиотека':active}</h1><p>{user?'Все твои загруженные видео в одном месте.':'Войди, чтобы создавать свою видеотеку.'}</p></div><div className="welcome-art"><div className="art-orb orb-one"/><div className="art-orb orb-two"/><div className="art-play"><Play fill="white" size={25}/></div><span className="art-caption">YOUR NEXT<br/>FAVORITE VIDEO</span></div></section>
+    <section className="welcome"><div><div className="eyebrow">ТВОЯ ВИДЕОПЛАТФОРМА</div><h1>{active==='Главная'?'Смотри новое':active}</h1><p>{category==='Мои видео'?'Твоя личная видеотека.':'Публичные видео сообщества MIRVEX.'}</p></div><div className="welcome-art"><div className="art-orb orb-one"/><div className="art-orb orb-two"/><div className="art-play"><Play fill="white" size={25}/></div><span className="art-caption">YOUR NEXT<br/>FAVORITE VIDEO</span></div></section>
     <div className="category-row">{categories.map(c=><button key={c} onClick={()=>setCategory(c)} className={'category '+(category===c?'selected':'')}>{c}</button>)}</div>
-    <div className="section-title"><div><h2>Мои видео</h2><span>Личная библиотека аккаунта</span></div><button className="sort-btn">Для вас <ChevronDown size={16}/></button></div>
+    <div className="section-title"><div><h2>{category==='Мои видео'?'Мои видео':'Свежие видео'}</h2><span>{category==='Мои видео'?'Видишь только ты':'Видео, опубликованные для всех'}</span></div><button className="sort-btn">Для вас <ChevronDown size={16}/></button></div>
     <div className="video-grid">{filtered.map(v=><article className="video-card" key={v.id}><button className="thumb" onClick={()=>setSelected(v)}><img src={v.image} alt=""/><span className="duration">{v.duration}</span><span className="thumb-hover"><Play fill="white"/></span></button><div className="video-info"><div className="channel-avatar">{v.avatar}</div><div className="video-copy"><button className="video-title" onClick={()=>setSelected(v)}>{v.title}</button><div className="channel-name">{v.channel}</div><div className="video-meta">{v.views} · {v.time}</div></div><button className="more-btn" aria-label="Ещё"><MoreHorizontal size={19}/></button></div></article>)}</div>
-    {filtered.length===0&&<div className="empty-state"><Film size={30}/><h3>{user?'Пока нет загруженных видео':'Войди в аккаунт'}</h3><p>{user?'Загружай ролики — они появятся здесь.':'Создай аккаунт или войди, чтобы пользоваться библиотекой.'}</p>{!user&&<button className="upload-submit" onClick={()=>setAuthOpen(true)}>Войти / Регистрация</button>}</div>}
+    {filtered.length===0&&<div className="empty-state"><Film size={30}/><h3>{category==='Мои видео'?(user?'Пока нет загруженных видео':'Войди в аккаунт'):'Пока нет публичных видео'}</h3><p>{category==='Мои видео'?(user?'Загружай ролики — они появятся здесь.':'Создай аккаунт или войди, чтобы пользоваться библиотекой.'):'Стань первым, кто опубликует видео в MIRVEX.'}</p>{!user&&category==='Мои видео'&&<button className="upload-submit" onClick={()=>setAuthOpen(true)}>Войти / Регистрация</button>}</div>}
 
     </>}
    </main>
   </div>
   {uploadOpen&&<UploadDialog token={token} onClose={()=>setUploadOpen(false)} onUploaded={addUploaded}/>}{authOpen&&<AuthDialog onClose={()=>setAuthOpen(false)} onAuth={onAuth}/>}
-  {selected&&<div className="modal-backdrop" onClick={()=>setSelected(null)}><div className="video-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setSelected(null)}><X/></button><div className="modal-player">{selected.videoUrl&&<MuxVideoPlayer src={selected.videoUrl} videoId={selected.id} title={selected.title} channel={selected.channel}/>}</div><div className="modal-details"><h2>{selected.title}</h2><div className="modal-meta">{selected.channel} · {selected.views}</div><p>{selected.videoUrl?'Видео из твоей библиотеки MIRVEX.':'Видео из твоей библиотеки MIRVEX.'}</p><button className={'like-btn '+(liked.includes(selected.id)?'is-liked':'')} onClick={()=>setLiked(x=>x.includes(selected.id)?x.filter(i=>i!==selected.id):[...x,selected.id])}><ThumbsUp size={17}/> {liked.includes(selected.id)?'Нравится':'Нравится'}</button></div></div></div>}
+  {selected&&<div className="modal-backdrop" onClick={()=>setSelected(null)}><div className="video-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setSelected(null)}><X/></button><div className="modal-player">{selected.videoUrl&&<MuxVideoPlayer src={selected.videoUrl} videoId={selected.id} title={selected.title} channel={selected.channel}/>}</div><div className="modal-details"><h2>{selected.title}</h2><div className="modal-meta">{selected.channel} · {selected.views}</div><p>{selected.videoUrl?'{selected.isPublic?'Публичное видео MIRVEX.':'Это видео доступно только тебе, пока ты его не опубликуешь.'}':'Видео из твоей библиотеки MIRVEX.'}</p>{selected.ownerId&&user&&String(selected.ownerId)===String(user.id)&&<button className="publish-btn" onClick={()=>togglePublish(selected)}>{selected.isPublic?'Скрыть из общей ленты':'Опубликовать для всех'}</button>}<button className={'like-btn '+(liked.includes(selected.id)?'is-liked':'')} onClick={()=>setLiked(x=>x.includes(selected.id)?x.filter(i=>i!==selected.id):[...x,selected.id])}><ThumbsUp size={17}/> {liked.includes(selected.id)?'Нравится':'Нравится'}</button></div></div></div>}
   <footer className="mobile-nav">{[['Главная',House],['Shorts',Flame],['Подписки',PlaySquare],['Вы',UserRound]].map(([n,I])=><button key={n} className={active===n?'mobile-active':''} onClick={()=>setActive(n)}><I size={21}/><span>{n}</span></button>)}</footer>
  </div>
 }
