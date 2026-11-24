@@ -119,10 +119,44 @@ function AuthDialog({onClose,onAuth}) {
  </div></div>;
 }
 
+
+function SettingsDialog({settings,onChange,onClose,user,onLogout}) {
+ const [section,setSection]=useState('Внешний вид');
+ const sections=[['Внешний вид','◐'],['Воспроизведение','▷'],['Аккаунт','○']];
+ const update=(key,value)=>onChange({...settings,[key]:value});
+ return <div className="settings-backdrop" onClick={onClose}><section className="settings-dialog" onClick={e=>e.stopPropagation()}>
+  <header className="settings-header"><div><div className="eyebrow">MIRVEX PERSONAL</div><h2>Настройки</h2><p>Настрой платформу под себя.</p></div><button className="settings-close" onClick={onClose}><X/></button></header>
+  <div className="settings-body"><nav className="settings-tabs">{sections.map(([name,mark])=><button key={name} className={section===name?'current':''} onClick={()=>setSection(name)}><span>{mark}</span>{name}</button>)}</nav>
+   <div className="settings-content">
+    {section==='Внешний вид'&&<><div className="settings-section-title">Интерфейс</div>
+     <div className="setting-row"><div><b>Оформление</b><small>Выбери оттенок интерфейса</small></div><div className="setting-choice"><button className={settings.theme==='dark'?'chosen':''} onClick={()=>update('theme','dark')}>Тёмное</button><button className={settings.theme==='black'?'chosen':''} onClick={()=>update('theme','black')}>Чёрное</button></div></div>
+     <div className="setting-row"><div><b>Размер текста</b><small>Масштаб подписей и заголовков</small></div><select value={settings.fontSize} onChange={e=>update('fontSize',e.target.value)}><option value="small">Маленький</option><option value="normal">Обычный</option><option value="large">Крупный</option></select></div>
+     <div className="setting-row"><div><b>Плотность карточек</b><small>Больше видео на одном экране</small></div><div className="setting-choice"><button className={!settings.compact?'chosen':''} onClick={()=>update('compact',false)}>Обычная</button><button className={settings.compact?'chosen':''} onClick={()=>update('compact',true)}>Компактная</button></div></div>
+     <div className="setting-row"><div><b>Уменьшить анимации</b><small>Меньше движения и переходов</small></div><input type="checkbox" checked={settings.reduceMotion} onChange={e=>update('reduceMotion',e.target.checked)}/></div>
+    </>}
+    {section==='Воспроизведение'&&<><div className="settings-section-title">Плеер</div>
+     <div className="setting-row"><div><b>Автовоспроизведение</b><small>Запускать видео автоматически при открытии</small></div><input type="checkbox" checked={settings.autoplay} onChange={e=>update('autoplay',e.target.checked)}/></div>
+     <div className="setting-row"><div><b>Запоминать громкость</b><small>Сохранять выбранный уровень звука</small></div><input type="checkbox" checked={settings.rememberVolume} onChange={e=>update('rememberVolume',e.target.checked)}/></div>
+     <p className="settings-note">Настройки плеера применяются к просмотру на этом устройстве.</p>
+    </>}
+    {section==='Аккаунт'&&<><div className="settings-section-title">Твой аккаунт</div>
+     <div className="account-settings-card"><div className="account-settings-avatar">{(user?.username?.[0]||'M').toUpperCase()}</div><div><b>{user?.username||'Гость'}</b><small>{user?.email||'Войди, чтобы синхронизировать библиотеку'}</small></div></div>
+     {user&&<button className="settings-logout" onClick={onLogout}>Выйти из аккаунта</button>}
+     <p className="settings-note">Параметры интерфейса сохраняются на этом устройстве.</p>
+    </>}
+   </div>
+  </div>
+  <footer className="settings-footer"><span>Изменения сохраняются автоматически</span><button onClick={onClose}>Готово</button></footer>
+ </section></div>;
+}
+
 function App(){
  const [active,setActive]=useState('Главная');
  const [uploadOpen,setUploadOpen]=useState(false);
  const [authOpen,setAuthOpen]=useState(false);
+ const [settingsOpen,setSettingsOpen]=useState(false);
+ const [settings,setSettings]=useState(()=>{try{return {...{theme:'dark',fontSize:'normal',compact:false,reduceMotion:false,autoplay:false,rememberVolume:true},...JSON.parse(localStorage.getItem('mirvex_settings')||'{}')}}catch{return {theme:'dark',fontSize:'normal',compact:false,reduceMotion:false,autoplay:false,rememberVolume:true}}});
+ useEffect(()=>{localStorage.setItem('mirvex_settings',JSON.stringify(settings));},[settings]);
  const [token,setToken]=useState(()=>localStorage.getItem('mirvex_token')||'');
  const [user,setUser]=useState(null);
  const [uploaded,setUploaded]=useState([]);
@@ -141,11 +175,12 @@ function App(){
  const [selected,setSelected]=useState(null);
  const [sidebar,setSidebar]=useState(true);
  const [liked,setLiked]=useState([]);
+ window.__mirvexAutoplay=settings.autoplay;
  const allVideos=category==='Мои видео'?uploaded:publicVideos;
  const filtered=useMemo(()=>allVideos.filter(v=> (v.title+' '+v.channel).toLowerCase().includes(query.toLowerCase())),[category,query,uploaded,publicVideos]);
  const nav=[['Главная',House],['Shorts',Flame],['Подписки',PlaySquare]];
  const library=[['История',History],['Плейлисты',Bookmark],['Понравившиеся',ThumbsUp]];
- return <div className="app">
+ return <div className={"app theme-"+settings.theme+" font-"+settings.fontSize+(settings.compact?" compact-grid":"")+(settings.reduceMotion?" reduce-motion":"")}>
   <header className="topbar">
    <div className="brand-area"><button className="icon-btn menu-btn" onClick={()=>setSidebar(!sidebar)} aria-label="Меню"><Menu/></button><a className="brand" href="#" onClick={()=>{setActive('Главная');setCategory('Для вас')}}><span className="brand-mark brand-monogram">M</span><span>MIRVEX<span className="brand-dot">.</span></span></a></div>
    <div className="search-wrap"><div className="search-box"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Поиск видео и каналов"/>{query&&<button className="clear-search" onClick={()=>setQuery('')}><X size={16}/></button>}</div><button className="icon-btn mic-btn" aria-label="Голосовой поиск"><Mic size={18}/></button></div>
@@ -160,7 +195,7 @@ function App(){
     <div className="side-divider"/>
     <div className="side-heading">Ваши подписки</div>
     {['Дизайн без шума','Космос рядом','Точка сборки'].map((n,i)=><button className="subscription" key={n}><span className="sub-avatar">{['◉','✦','△'][i]}</span>{n}<i/></button>)}
-    <div className="sidebar-bottom"><Settings size={16}/> Настройки</div>
+    <button className="sidebar-bottom" onClick={()=>setSettingsOpen(true)}><Settings size={16}/> Настройки</button>
    </aside>}
    <main className="main">
     {active==='Shorts'?<><div className="page-heading"><div><div className="eyebrow">БЫСТРО И ПО ДЕЛУ</div><h1>Shorts</h1><p>Вертикальные видео, которые затягивают.</p></div></div><div className="shorts-grid">{shorts.map(s=><button className="short-card" key={s.id} onClick={()=>setSelected({title:s.title,channel:'MIRVEX Shorts',views:s.views+' просмотров',time:'Сейчас',duration:'0:32',image:s.image,avatar:'✦'})}><img src={s.image}/><span className="short-play"><Play fill="white"/></span><strong>{s.title}</strong><small>{s.views} просмотров</small></button>)}</div></>:<>
@@ -173,9 +208,9 @@ function App(){
     </>}
    </main>
   </div>
-  {uploadOpen&&<UploadDialog token={token} onClose={()=>setUploadOpen(false)} onUploaded={addUploaded}/>}{authOpen&&<AuthDialog onClose={()=>setAuthOpen(false)} onAuth={onAuth}/>}
+  {settingsOpen&&<SettingsDialog settings={settings} onChange={setSettings} onClose={()=>setSettingsOpen(false)} user={user} onLogout={()=>{logout();setSettingsOpen(false)}}/>}{uploadOpen&&<UploadDialog token={token} onClose={()=>setUploadOpen(false)} onUploaded={addUploaded}/>}{authOpen&&<AuthDialog onClose={()=>setAuthOpen(false)} onAuth={onAuth}/>}
   {selected&&<div className="modal-backdrop" onClick={()=>setSelected(null)}><div className="video-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setSelected(null)}><X/></button><div className="modal-player">{selected.videoUrl&&<MuxVideoPlayer src={selected.videoUrl} videoId={selected.id} title={selected.title} channel={selected.channel}/>}</div><div className="modal-details"><h2>{selected.title}</h2><div className="modal-meta">{selected.channel} · {selected.views}</div><p>{selected.isPublic?'Публичное видео MIRVEX.':'Это видео доступно только тебе, пока ты его не опубликуешь.'}</p>{selected.ownerId&&user&&String(selected.ownerId)===String(user.id)&&<button className="publish-btn" onClick={()=>togglePublish(selected)}>{selected.isPublic?'Скрыть из общей ленты':'Опубликовать для всех'}</button>}<button className={'like-btn '+(liked.includes(selected.id)?'is-liked':'')} onClick={()=>setLiked(x=>x.includes(selected.id)?x.filter(i=>i!==selected.id):[...x,selected.id])}><ThumbsUp size={17}/> {liked.includes(selected.id)?'Нравится':'Нравится'}</button></div></div></div>}
-  <footer className="mobile-nav">{[['Главная',House],['Shorts',Flame],['Подписки',PlaySquare],['Вы',UserRound]].map(([n,I])=><button key={n} className={active===n?'mobile-active':''} onClick={()=>setActive(n)}><I size={21}/><span>{n}</span></button>)}</footer>
+  <footer className="mobile-nav">{[['Главная',House],['Shorts',Flame],['Подписки',PlaySquare],['Настройки',Settings]].map(([n,I])=><button key={n} onClick={()=>setSettingsOpen(true)}><I size={21}/><span>{n}</span></button>)}</footer>
  </div>
 }
 createRoot(document.getElementById('root')).render(<App/>);
