@@ -58,6 +58,20 @@ async function initDb() {
     CREATE TABLE IF NOT EXISTS video_favorites (user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,video_id BIGINT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(user_id,video_id));
     CREATE TABLE IF NOT EXISTS playlists (id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,title TEXT NOT NULL CHECK(char_length(title) BETWEEN 1 AND 60),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS playlist_videos (playlist_id BIGINT NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,video_id BIGINT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,added_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(playlist_id,video_id));
+    CREATE TABLE IF NOT EXISTS video_reports (
+      id BIGSERIAL PRIMARY KEY,
+      video_id BIGINT REFERENCES videos(id) ON DELETE SET NULL,
+      video_title TEXT NOT NULL,
+      video_url TEXT NOT NULL,
+      reporter_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+      reporter_name TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      details TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'new' CHECK(status IN ('new','reviewed','rejected')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      reviewed_at TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS video_reports_status_created_idx ON video_reports(status,created_at DESC);
     CREATE INDEX IF NOT EXISTS playlist_videos_added_idx ON playlist_videos(playlist_id,added_at DESC);
   `);
 }
@@ -105,13 +119,13 @@ app.post('/api/auth/login', requireDb, async (req,res) => {
     const user=result.rows[0];
     if(!user || !(await bcrypt.compare(password,user.password_hash))) return res.status(401).json({error:'Неверная почта или пароль'});
     const token=jwt.sign({id:user.id,email:user.email,username:user.username},JWT_SECRET,{expiresIn:'30d'});
-    res.json({token,user:{id:user.id,email:user.email,username:user.username}});
+    res.json({token,user:{id:user.id,email:user.email,username:user.username,isAdmin:isAdminEmail(user.email)}});
   } catch { res.status(500).json({error:'Не удалось войти'}); }
 });
 app.get('/api/auth/me', requireDb, auth, async (req,res) => {
   const r=await pool.query('SELECT id,email,username FROM users WHERE id=$1',[req.user.id]);
   if(!r.rowCount) return res.status(401).json({error:'Аккаунт не найден'});
-  res.json({user:r.rows[0]});
+  res.json({user:{...r.rows[0],isAdmin:isAdminEmail(r.rows[0].email)}});
 });
 
 app.post('/api/uploads', requireDb, auth, async (req,res) => {
@@ -186,6 +200,10 @@ app.get('/api/videos', requireDb, auth, async (req,res) => {
   res.json({videos:r.rows.map(v=>({...v,id:'db-'+v.id,ownerId:String(v.owner_id),isPublic:v.is_public,videoUrl:v.playback_id?'https://stream.mux.com/'+v.playback_id+'.m3u8':null,image:v.cover_url?'https://mirvex-api.onrender.com'+v.cover_url:'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',channel:'Мой канал',views:'Ваше видео',time:new Date(v.created_at).toLocaleDateString('ru-RU'),category:'Мои видео',avatar:'М'}))});
 });
 
+
+function isAdminEmail(email){const allowed=(process.env.ADMIN_EMAILS||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);return allowed.includes(String(email||'').toLowerCase());}
+function adminOnly(req,res,next){if(!isAdminEmail(req.user?.email))return res.status(403).json({error:'Доступ только для администратора'});next();}
+
 function numericVideoId(value){const id=String(value||'').replace(/^db-/,'');return /^\d+$/.test(id)?id:null;}
 app.get('/api/videos/:id/social',requireDb,async(req,res)=>{const id=numericVideoId(req.params.id);if(!id)return res.status(400).json({error:'Некорректное видео'});const v=await pool.query("SELECT id,owner_id,is_public,status FROM videos WHERE id=$1",[id]);if(!v.rowCount||v.rows[0].status!=='ready')return res.status(404).json({error:'Видео не найдено'});let viewerId=null;try{const t=(req.headers.authorization||'').replace(/^Bearer\s+/i,'');if(t)viewerId=jwt.verify(t,JWT_SECRET).id;}catch{}if(!v.rows[0].is_public&&String(v.rows[0].owner_id)!==String(viewerId))return res.status(404).json({error:'Видео недоступно'});const [counts,comments]=await Promise.all([pool.query('SELECT reaction,COUNT(*)::int AS count FROM video_reactions WHERE video_id=$1 GROUP BY reaction',[id]),pool.query('SELECT c.id,c.body,c.created_at,u.id AS user_id,u.username FROM video_comments c JOIN users u ON u.id=c.user_id WHERE c.video_id=$1 ORDER BY c.created_at DESC LIMIT 50',[id])]);let userReaction=null;if(viewerId){const rr=await pool.query('SELECT reaction FROM video_reactions WHERE video_id=$1 AND user_id=$2',[id,viewerId]);userReaction=rr.rows[0]?.reaction||null;}const stats={likes:0,dislikes:0};counts.rows.forEach(x=>stats[x.reaction==='like'?'likes':'dislikes']=x.count);res.json({...stats,userReaction,comments:comments.rows.map(c=>({id:c.id,body:c.body,username:c.username,userId:String(c.user_id),createdAt:c.created_at}))});});
 app.post('/api/videos/:id/reaction',requireDb,auth,async(req,res)=>{const id=numericVideoId(req.params.id),reaction=req.body?.reaction;if(!id||![null,'like','dislike'].includes(reaction))return res.status(400).json({error:'Некорректная реакция'});const v=await pool.query("SELECT id FROM videos WHERE id=$1 AND status='ready' AND (is_public=TRUE OR owner_id=$2)",[id,req.user.id]);if(!v.rowCount)return res.status(404).json({error:'Видео не найдено'});if(reaction===null)await pool.query('DELETE FROM video_reactions WHERE video_id=$1 AND user_id=$2',[id,req.user.id]);else await pool.query('INSERT INTO video_reactions(video_id,user_id,reaction) VALUES($1,$2,$3) ON CONFLICT(video_id,user_id) DO UPDATE SET reaction=EXCLUDED.reaction,created_at=NOW()',[id,req.user.id,reaction]);const r=await pool.query('SELECT reaction,COUNT(*)::int AS count FROM video_reactions WHERE video_id=$1 GROUP BY reaction',[id]);const stats={likes:0,dislikes:0};r.rows.forEach(x=>stats[x.reaction==='like'?'likes':'dislikes']=x.count);res.json({...stats,userReaction:reaction});});
@@ -239,5 +257,38 @@ app.delete('/api/library/playlists/:id',requireDb,auth,async(req,res)=>{
  if(!r.rowCount)return res.status(404).json({error:'Плейлист не найден'});
  res.json({ok:true});
 });
+
+app.post('/api/videos/:id/report',requireDb,auth,async(req,res)=>{
+ const id=numericVideoId(req.params.id),reason=String(req.body?.reason||'').trim(),details=String(req.body?.details||'').trim().slice(0,1000);
+ const allowed=['Спам или мошенничество','Насилие или опасный контент','Ненависть или травля','Нарушение авторских прав','Сексуальный контент','Другое'];
+ if(!id||!allowed.includes(reason))return res.status(400).json({error:'Выбери причину жалобы'});
+ const v=await pool.query("SELECT v.id,v.title,v.playback_id,v.is_public,v.owner_id,u.username FROM videos v JOIN users u ON u.id=v.owner_id WHERE v.id=$1 AND v.status='ready'",[id]);
+ if(!v.rowCount||!v.rows[0].is_public)return res.status(404).json({error:'Публичное видео не найдено'});
+ if(String(v.rows[0].owner_id)===String(req.user.id))return res.status(400).json({error:'Нельзя пожаловаться на собственное видео'});
+ const duplicate=await pool.query("SELECT id FROM video_reports WHERE video_id=$1 AND reporter_id=$2 AND status='new'",[id,req.user.id]);
+ if(duplicate.rowCount)return res.status(409).json({error:'Ты уже отправил жалобу на это видео'});
+ const videoUrl='https://frame-video-platform.onrender.com/?video=db-'+id;
+ const r=await pool.query('INSERT INTO video_reports(video_id,video_title,video_url,reporter_id,reporter_name,reason,details) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id,created_at',[id,v.rows[0].title,videoUrl,req.user.id,req.user.username,reason,details]);
+ res.status(201).json({ok:true,report:r.rows[0]});
+});
+app.get('/api/admin/reports',requireDb,auth,adminOnly,async(req,res)=>{
+ const r=await pool.query(`SELECT r.id,r.video_id,r.video_title,r.video_url,r.reporter_name,r.reason,r.details,r.status,r.created_at,
+ v.playback_id,v.cover,v.owner_id,u.username AS video_owner
+ FROM video_reports r LEFT JOIN videos v ON v.id=r.video_id LEFT JOIN users u ON u.id=v.owner_id
+ ORDER BY CASE r.status WHEN 'new' THEN 0 WHEN 'reviewed' THEN 1 ELSE 2 END,r.created_at DESC LIMIT 200`);
+ res.json({reports:r.rows.map(x=>({...x,id:String(x.id),videoId:x.video_id?'db-'+x.video_id:null,videoOwner:x.video_owner||'Аккаунт удалён',image:x.cover&&x.video_id?'https://mirvex-api.onrender.com/api/videos/'+x.video_id+'/cover':x.playback_id?'https://image.mux.com/'+x.playback_id+'/thumbnail.jpg?width=600':null,streamUrl:x.playback_id?'https://stream.mux.com/'+x.playback_id+'.m3u8':null}))});
+});
+app.post('/api/admin/reports/:id/status',requireDb,auth,adminOnly,async(req,res)=>{
+ const status=req.body?.status;if(!['reviewed','rejected'].includes(status))return res.status(400).json({error:'Некорректный статус'});
+ const r=await pool.query('UPDATE video_reports SET status=$1,reviewed_at=NOW() WHERE id=$2 RETURNING id,status',[status,req.params.id]);
+ if(!r.rowCount)return res.status(404).json({error:'Жалоба не найдена'});res.json({ok:true,report:r.rows[0]});
+});
+app.delete('/api/admin/videos/:id',requireDb,auth,adminOnly,async(req,res)=>{
+ const id=numericVideoId(req.params.id);if(!id)return res.status(400).json({error:'Некорректное видео'});
+ const r=await pool.query('SELECT id,asset_id FROM videos WHERE id=$1',[id]);if(!r.rowCount)return res.status(404).json({error:'Видео не найдено'});
+ if(r.rows[0].asset_id){try{await fetch('https://api.mux.com/video/v1/assets/'+encodeURIComponent(r.rows[0].asset_id),{method:'DELETE',headers:{Authorization:muxAuth()}});}catch(e){console.error('Mux asset deletion failed:',e.message);}}
+ await pool.query('DELETE FROM videos WHERE id=$1',[id]);res.json({ok:true});
+});
+
 app.use((err,_req,res,_next)=>res.status(400).json({error:err.message||'Ошибка запроса'}));
 initDb().then(()=>app.listen(PORT,'0.0.0.0',()=>console.log('MIRVEX API listening on '+PORT))).catch(e=>{console.error('Database initialization failed:',e);process.exit(1);});
