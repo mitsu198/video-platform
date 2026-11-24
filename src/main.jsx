@@ -43,18 +43,18 @@ function MuxVideoPlayer({ src, videoId, title, channel }) {
  return <video ref={videoRef} className="mux-video" src={src} controls playsInline preload="metadata" />;
 }
 
-function UploadDialog({ onClose, onUploaded }) {
- const [file,setFile]=useState(null);
+function UploadDialog({ onClose, onUploaded, token }) {
+ const [file,setFile]=useState(null);\n const [cover,setCover]=useState(null);
  const [title,setTitle]=useState('');
  const [status,setStatus]=useState('idle');
  const [progress,setProgress]=useState(0);
  const [message,setMessage]=useState('');
- const chooseRef=useRef(null);
+ const chooseRef=useRef(null);\n const coverRef=useRef(null);
  async function upload() {
   if (!file) return;
   setStatus('uploading'); setProgress(0); setMessage('Создаём защищённую ссылку...');
   try {
-   const created=await fetch('https://mirvex-api.onrender.com/api/uploads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:title||file.name})});
+   const created=await fetch('https://mirvex-api.onrender.com/api/uploads',{method:'POST',headers:{'Content-Type':'application/json'},headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({title:title||file.name})});
    const data=await created.json();
    if(!created.ok) throw new Error(data.error||'Не удалось создать загрузку');
    setMessage('Загружаем видео в Mux...');
@@ -70,14 +70,14 @@ function UploadDialog({ onClose, onUploaded }) {
    let ready=null;
    for(let i=0;i<120;i++){
     await new Promise(r=>setTimeout(r,3000));
-    const check=await fetch('https://mirvex-api.onrender.com/api/uploads/'+encodeURIComponent(data.uploadId));
+    const check=await fetch('https://mirvex-api.onrender.com/api/uploads/'+encodeURIComponent(data.uploadId),{headers:{Authorization:'Bearer '+token}});
     const result=await check.json();
     if(!check.ok) throw new Error(result.error||'Не удалось проверить обработку');
     if(result.status==='ready'&&result.playbackId){ready=result;break;}
     if(result.status==='errored') throw new Error('Mux не смог обработать это видео');
    }
    if(!ready) throw new Error('Обработка занимает больше обычного. Попробуйте проверить позже.');
-   const item={id:'mux-'+ready.assetId,title:title||file.name,channel:'Мой канал',views:'Новое видео',time:'Только что',duration:'',image:'https://images.unsplash.com/photo-1492619375914-88005aa9e8fb?w=900&q=85',avatar:'М',category:'Мои видео',videoUrl:'https://stream.mux.com/'+ready.playbackId+'.m3u8'};
+   if(cover){const fd=new FormData();fd.append('cover',cover);const cr=await fetch('https://mirvex-api.onrender.com/api/videos/'+ready.videoId+'/cover',{method:'POST',headers:{Authorization:'Bearer '+token},body:fd});const cd=await cr.json();if(!cr.ok)throw new Error(cd.error||'Не удалось сохранить обложку');}\n   const item={id:'db-'+ready.videoId,title:title||file.name,channel:'Мой канал',views:'Новое видео',time:'Только что',duration:'',image:cover?URL.createObjectURL(cover):'https://image.mux.com/'+ready.playbackId+'/thumbnail.jpg?width=900',avatar:'М',category:'Мои видео',videoUrl:'https://stream.mux.com/'+ready.playbackId+'.m3u8'};
    onUploaded(item);
    setStatus('done'); setMessage('Видео опубликовано и готово к просмотру!');
   } catch(e){setStatus('error');setMessage(e.message||'Не удалось загрузить видео');}
@@ -87,7 +87,7 @@ function UploadDialog({ onClose, onUploaded }) {
   <label className="upload-field">Название видео<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Например, мой первый ролик"/></label>
   <input ref={chooseRef} type="file" accept="video/*" hidden onChange={e=>setFile(e.target.files?.[0]||null)}/>
   <button className="file-picker" onClick={()=>chooseRef.current?.click()} disabled={status==='uploading'}><Film size={20}/><span>{file?file.name:'Выбрать видеофайл'}</span><small>{file?(file.size/1024/1024).toFixed(1)+' МБ':'MP4, MOV и другие форматы'}</small></button>
-  {status==='uploading'&&<div className="upload-progress"><div><span>{message}</span><b>{progress}%</b></div><i><span style={{width:progress+'%'}}/></i></div>}
+  <input ref={coverRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e=>setCover(e.target.files?.[0]||null)}/>\n  <button className="file-picker cover-picker" onClick={()=>coverRef.current?.click()} disabled={status==='uploading'}>{cover?<img src={URL.createObjectURL(cover)} alt="Обложка"/>:<Film size={20}/>}<span>{cover?cover.name:'Выбрать обложку (превью)'}</span><small>JPG, PNG, WebP · до 5 МБ</small></button>\n  {status==='uploading'&&<div className="upload-progress"><div><span>{message}</span><b>{progress}%</b></div><i><span style={{width:progress+'%'}}/></i></div>}
   {message&&status!=='uploading'&&<p className={'upload-message '+status}>{message}</p>}
   <div className="upload-actions"><button className="upload-cancel" onClick={onClose}>Закрыть</button><button className="upload-submit" disabled={!file||status==='uploading'||status==='done'} onClick={upload}>{status==='uploading'?'Загрузка...':status==='done'?'Готово':'Опубликовать'}</button></div>
  </div></div>;
