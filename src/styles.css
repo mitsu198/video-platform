@@ -114,3 +114,59 @@
 .admin-report-actions button,.admin-report-actions a{display:inline-flex;align-items:center;gap:6px;padding:9px 11px;border-radius:9px;background:#303139;color:#e7e7eb;font-size:10px;font-weight:750;text-decoration:none}
 .admin-report-actions .danger-action{background:#48272c;color:#ffb2b8}.admin-report-actions button:hover,.admin-report-actions a:hover{filter:brightness(1.2)}
 @media(max-width:760px){.report-dialog{padding:24px 18px}.admin-dialog{max-height:calc(100dvh - 16px);border-radius:16px}.admin-dialog .settings-header{padding:20px 17px}.admin-report-list{padding:12px}.admin-report{padding:13px}.admin-report-actions button,.admin-report-actions a{font-size:9px;padding:8px}}
+
+
+/* MIRVEX motion system — keeps the existing visual language intact */
+:root { --mirvex-ease:cubic-bezier(.22,1,.36,1); --mirvex-fast:260ms; }
+button, a, input, select, textarea, .video-card, .playlist-card {
+ transition-property:color,background-color,border-color,box-shadow,opacity,transform,filter;
+ transition-duration:260ms; transition-timing-function:var(--mirvex-ease);
+}
+button:active:not(:disabled) { transform:scale(.975); }
+.settings-close:hover, .profile-close:hover, .modal-close:hover { transform:rotate(5deg) scale(1.06); background-color:#373941; }
+.settings-close:active, .profile-close:active, .modal-close:active { transform:scale(.92); }
+.video-card, .short-card, .playlist-card { will-change:transform; }
+.video-card:hover, .short-card:hover, .playlist-card:hover { transform:translateY(-3px); }
+.nav-item svg, .mobile-nav svg { transition:color 280ms var(--mirvex-ease),transform 280ms var(--mirvex-ease); }
+.nav-item.active svg, .mobile-nav .mobile-active svg { transform:scale(1.08); }
+.setting-choice button, .settings-tabs button, .accent-options button { transition:background-color 280ms var(--mirvex-ease),color 280ms var(--mirvex-ease),transform 280ms var(--mirvex-ease),box-shadow 280ms var(--mirvex-ease); }
+.motion-layer { animation:mirvex-backdrop-in 420ms var(--mirvex-ease) both; }
+.motion-layer.is-closing { animation:mirvex-backdrop-out 420ms var(--mirvex-ease) both; pointer-events:none; }
+.motion-panel { transform-origin:center; animation:mirvex-panel-in 460ms var(--mirvex-ease) both; }
+.is-closing .motion-panel { animation:mirvex-panel-out 420ms var(--mirvex-ease) both; }
+.settings-header > div, .settings-tabs, .settings-content > *, .settings-footer { animation:mirvex-item-in 380ms var(--mirvex-ease) both; }
+.settings-header > div { animation-delay:70ms; }
+.settings-tabs { animation-delay:130ms; }
+.settings-content > *:nth-child(1) { animation-delay:160ms; }
+.settings-content > *:nth-child(2) { animation-delay:205ms; }
+.settings-content > *:nth-child(3) { animation-delay:245ms; }
+.settings-content > *:nth-child(4) { animation-delay:285ms; }
+.settings-content > *:nth-child(5) { animation-delay:325ms; }
+.settings-content > *:nth-child(n+6) { animation-delay:355ms; }
+.settings-footer { animation-delay:390ms; }
+.profile-large-avatar { animation:mirvex-item-in 420ms var(--mirvex-ease) 90ms both; }
+.profile-identity, .profile-follow { animation:mirvex-item-in 400ms var(--mirvex-ease) 155ms both; }
+.profile-stats > div { animation:mirvex-item-in 390ms var(--mirvex-ease) both; }
+.profile-stats > div:nth-child(1) { animation-delay:210ms; }
+.profile-stats > div:nth-child(2) { animation-delay:265ms; }
+.profile-stats > div:nth-child(3) { animation-delay:320ms; }
+.profile-video-heading { animation:mirvex-item-in 380ms var(--mirvex-ease) 365ms both; }
+.profile-video-item, .profile-videos > p { animation:mirvex-item-in 390ms var(--mirvex-ease) 410ms both; }
+.profile-video-item:nth-child(2) { animation-delay:455ms; }
+.profile-video-item:nth-child(3) { animation-delay:500ms; }
+.page-transition { animation:mirvex-page-in 340ms var(--mirvex-ease) both; }
+@keyframes mirvex-backdrop-in { from {opacity:0;backdrop-filter:blur(0)} to {opacity:1;backdrop-filter:blur(12px)} }
+@keyframes mirvex-backdrop-out { from {opacity:1;backdrop-filter:blur(12px)} to {opacity:0;backdrop-filter:blur(0)} }
+@keyframes mirvex-panel-in { from {opacity:0;transform:translate3d(0,20px,0) scale(.96);filter:blur(3px)} to {opacity:1;transform:translate3d(0,0,0) scale(1);filter:blur(0)} }
+@keyframes mirvex-panel-out { from {opacity:1;transform:translate3d(0,0,0) scale(1);filter:blur(0)} to {opacity:0;transform:translate3d(0,12px,0) scale(.97);filter:blur(2px)} }
+@keyframes mirvex-item-in { from {opacity:0;transform:translate3d(0,10px,0)} to {opacity:1;transform:translate3d(0,0,0)} }
+@keyframes mirvex-page-in { from {opacity:0;transform:translate3d(0,10px,0)} to {opacity:1;transform:translate3d(0,0,0)} }
+@media(max-width:760px) {
+ .motion-layer { padding-bottom:calc(8px + env(safe-area-inset-bottom)); }
+ .settings-dialog, .profile-dialog { max-width:100%; min-width:0; }
+ .profile-dialog { overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+ .mobile-nav button:active { transform:scale(.94); }
+}
+@media(prefers-reduced-motion:reduce) {
+ *,*::before,*::after { scroll-behavior:auto!important;animation-duration:.01ms!important;animation-delay:0ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important; }
+}
