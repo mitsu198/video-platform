@@ -9,7 +9,7 @@ const videos = [];
 const shorts = [];
 const categories=['Для вас','Мои видео'];
 
-function MuxVideoPlayer({ src, videoId, title, channel }) {
+function MuxVideoPlayer({ src, videoId, title, channel, autoplay }) {
  const videoRef = useRef(null);
  useEffect(() => {
   const video = videoRef.current;
@@ -40,7 +40,7 @@ function MuxVideoPlayer({ src, videoId, title, channel }) {
   });
   return () => { hls?.destroy(); video.mux?.destroy?.(); };
  }, [src, videoId, title, channel]);
- return <video ref={videoRef} className="mux-video" src={src} controls playsInline preload="metadata" />;
+ return <video ref={videoRef} className="mux-video" src={src} controls playsInline preload="metadata" autoPlay={autoplay} />;
 }
 
 function UploadDialog({ onClose, onUploaded, token }) {
@@ -136,7 +136,6 @@ function SettingsDialog({settings,onChange,onClose,user,onLogout}) {
     </>}
     {section==='Воспроизведение'&&<><div className="settings-section-title">Плеер</div>
      <div className="setting-row"><div><b>Автовоспроизведение</b><small>Запускать видео автоматически при открытии</small></div><input type="checkbox" checked={settings.autoplay} onChange={e=>update('autoplay',e.target.checked)}/></div>
-     <div className="setting-row"><div><b>Запоминать громкость</b><small>Сохранять выбранный уровень звука</small></div><input type="checkbox" checked={settings.rememberVolume} onChange={e=>update('rememberVolume',e.target.checked)}/></div>
      <p className="settings-note">Настройки плеера применяются к просмотру на этом устройстве.</p>
     </>}
     {section==='Аккаунт'&&<><div className="settings-section-title">Твой аккаунт</div>
@@ -155,7 +154,7 @@ function App(){
  const [uploadOpen,setUploadOpen]=useState(false);
  const [authOpen,setAuthOpen]=useState(false);
  const [settingsOpen,setSettingsOpen]=useState(false);
- const [settings,setSettings]=useState(()=>{try{return {...{theme:'dark',fontSize:'normal',compact:false,reduceMotion:false,autoplay:false,rememberVolume:true},...JSON.parse(localStorage.getItem('mirvex_settings')||'{}')}}catch{return {theme:'dark',fontSize:'normal',compact:false,reduceMotion:false,autoplay:false,rememberVolume:true}}});
+ const [settings,setSettings]=useState(()=>{try{return {...{theme:'dark',fontSize:'normal',compact:false,reduceMotion:false,autoplay:false},...JSON.parse(localStorage.getItem('mirvex_settings')||'{}')}}catch{return {theme:'dark',fontSize:'normal',compact:false,reduceMotion:false,autoplay:false}}});
  useEffect(()=>{localStorage.setItem('mirvex_settings',JSON.stringify(settings));},[settings]);
  const [token,setToken]=useState(()=>localStorage.getItem('mirvex_token')||'');
  const [user,setUser]=useState(null);
@@ -175,7 +174,6 @@ function App(){
  const [selected,setSelected]=useState(null);
  const [sidebar,setSidebar]=useState(true);
  const [liked,setLiked]=useState([]);
- window.__mirvexAutoplay=settings.autoplay;
  const allVideos=category==='Мои видео'?uploaded:publicVideos;
  const filtered=useMemo(()=>allVideos.filter(v=> (v.title+' '+v.channel).toLowerCase().includes(query.toLowerCase())),[category,query,uploaded,publicVideos]);
  const nav=[['Главная',House],['Shorts',Flame],['Подписки',PlaySquare]];
@@ -209,7 +207,7 @@ function App(){
    </main>
   </div>
   {settingsOpen&&<SettingsDialog settings={settings} onChange={setSettings} onClose={()=>setSettingsOpen(false)} user={user} onLogout={()=>{logout();setSettingsOpen(false)}}/>}{uploadOpen&&<UploadDialog token={token} onClose={()=>setUploadOpen(false)} onUploaded={addUploaded}/>}{authOpen&&<AuthDialog onClose={()=>setAuthOpen(false)} onAuth={onAuth}/>}
-  {selected&&<div className="modal-backdrop" onClick={()=>setSelected(null)}><div className="video-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setSelected(null)}><X/></button><div className="modal-player">{selected.videoUrl&&<MuxVideoPlayer src={selected.videoUrl} videoId={selected.id} title={selected.title} channel={selected.channel}/>}</div><div className="modal-details"><h2>{selected.title}</h2><div className="modal-meta">{selected.channel} · {selected.views}</div><p>{selected.isPublic?'Публичное видео MIRVEX.':'Это видео доступно только тебе, пока ты его не опубликуешь.'}</p>{selected.ownerId&&user&&String(selected.ownerId)===String(user.id)&&<button className="publish-btn" onClick={()=>togglePublish(selected)}>{selected.isPublic?'Скрыть из общей ленты':'Опубликовать для всех'}</button>}<button className={'like-btn '+(liked.includes(selected.id)?'is-liked':'')} onClick={()=>setLiked(x=>x.includes(selected.id)?x.filter(i=>i!==selected.id):[...x,selected.id])}><ThumbsUp size={17}/> {liked.includes(selected.id)?'Нравится':'Нравится'}</button></div></div></div>}
+  {selected&&<div className="modal-backdrop" onClick={()=>setSelected(null)}><div className="video-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setSelected(null)}><X/></button><div className="modal-player">{selected.videoUrl&&<MuxVideoPlayer src={selected.videoUrl} videoId={selected.id} title={selected.title} channel={selected.channel} autoplay={settings.autoplay}/>}</div><div className="modal-details"><h2>{selected.title}</h2><div className="modal-meta">{selected.channel} · {selected.views}</div><p>{selected.isPublic?'Публичное видео MIRVEX.':'Это видео доступно только тебе, пока ты его не опубликуешь.'}</p>{selected.ownerId&&user&&String(selected.ownerId)===String(user.id)&&<button className="publish-btn" onClick={()=>togglePublish(selected)}>{selected.isPublic?'Скрыть из общей ленты':'Опубликовать для всех'}</button>}<button className={'like-btn '+(liked.includes(selected.id)?'is-liked':'')} onClick={()=>setLiked(x=>x.includes(selected.id)?x.filter(i=>i!==selected.id):[...x,selected.id])}><ThumbsUp size={17}/> {liked.includes(selected.id)?'Нравится':'Нравится'}</button></div></div></div>}
   <footer className="mobile-nav">{[['Главная',House],['Shorts',Flame],['Подписки',PlaySquare],['Настройки',Settings]].map(([n,I])=><button key={n} onClick={()=>setSettingsOpen(true)}><I size={21}/><span>{n}</span></button>)}</footer>
  </div>
 }
