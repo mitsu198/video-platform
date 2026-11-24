@@ -91,3 +91,26 @@
 .favorite-action.saved{background:var(--accent-soft,#ffffff20);color:var(--accent,#fff)}
 .add-playlist{display:flex;gap:6px;align-items:center}.add-playlist select{flex:none;max-width:170px;padding:9px;font-size:10px}
 @media(max-width:760px){.playlist-list{grid-template-columns:repeat(2,minmax(0,1fr))}.playlist-card{padding:12px}.playlist-create input{font-size:11px}.video-library-actions{gap:7px}.add-playlist{width:100%}.add-playlist select{flex:1;max-width:none}}
+
+
+/* MIRVEX moderation */
+.admin-nav{margin-top:8px;color:#e8c27a!important}.admin-nav:hover{background:#e8c27a18!important}
+.report-video-btn{display:inline-flex;align-items:center;gap:7px;margin:0 8px 10px 0;padding:10px 13px;border:1px solid #6d4b4b;border-radius:10px;background:#352326;color:#ffb0b0;font-size:11px;font-weight:750}
+.report-dialog{position:relative;width:min(500px,100%);background:#191a20;border:1px solid #383943;border-radius:20px;padding:28px;box-shadow:0 30px 100px #000c}
+.report-dialog h2{font-size:23px;margin:8px 0}.report-dialog>p{font-size:12px;line-height:1.6;color:#9295a0;margin:0 0 20px}.report-close{position:absolute;right:18px;top:18px}
+.report-dialog select,.report-dialog textarea{width:100%;background:#101115;border:1px solid #35363d;border-radius:10px;padding:12px;color:#eee;font:inherit;font-size:12px;outline:none}
+.report-dialog textarea{min-height:90px;resize:vertical}
+.admin-dialog{width:min(900px,100%);max-height:calc(100dvh - 32px);overflow:hidden;display:flex;flex-direction:column;background:#17181d;border:1px solid #363740;border-radius:20px;box-shadow:0 30px 100px #000c}
+.admin-dialog .settings-header h2{display:flex;align-items:center;gap:9px}
+.admin-report-list{padding:18px 24px 24px;overflow:auto;display:grid;gap:12px}
+.admin-report-list>p{font-size:12px;color:#9b9da5;padding:18px}
+.admin-report{padding:17px;background:#202127;border:1px solid #34353b;border-radius:14px}
+.admin-report-top{display:flex;justify-content:space-between;align-items:center;gap:10px}.admin-report-top small{font-size:10px;color:#858892}
+.report-status{font-size:9px;font-weight:800;padding:6px 9px;border-radius:20px;background:#493b20;color:#f1d18a}
+.status-reviewed{background:#1d4032;color:#9be0bd}.status-rejected{background:#40272b;color:#e6a3aa}
+.admin-report h3{font-size:15px;margin:12px 0 7px}.admin-report-meta,.admin-report p{font-size:11px;line-height:1.6;color:#a9abb3;margin:5px 0}.admin-report-meta b{color:#eee}
+.admin-report .report-details{padding:10px 12px;border-radius:9px;background:#17181d;color:#c8c9cf;white-space:pre-wrap}
+.admin-report-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+.admin-report-actions button,.admin-report-actions a{display:inline-flex;align-items:center;gap:6px;padding:9px 11px;border-radius:9px;background:#303139;color:#e7e7eb;font-size:10px;font-weight:750;text-decoration:none}
+.admin-report-actions .danger-action{background:#48272c;color:#ffb2b8}.admin-report-actions button:hover,.admin-report-actions a:hover{filter:brightness(1.2)}
+@media(max-width:760px){.report-dialog{padding:24px 18px}.admin-dialog{max-height:calc(100dvh - 16px);border-radius:16px}.admin-dialog .settings-header{padding:20px 17px}.admin-report-list{padding:12px}.admin-report{padding:13px}.admin-report-actions button,.admin-report-actions a{font-size:9px;padding:8px}}
