@@ -131,7 +131,7 @@ app.get('/api/uploads/:id', requireDb, auth, async (req,res) => {
     if(!ar.ok) return res.status(ar.status).json({error:'Не удалось получить видеофайл'});
     const asset=ap.data, playbackId=asset.playback_ids?.[0]?.id||null;
     await pool.query('UPDATE videos SET asset_id=$1,playback_id=$2,status=$3,duration=$4 WHERE upload_id=$5 AND owner_id=$6',[asset.id,playbackId,asset.status,asset.duration||null,req.params.id,req.user.id]);
-    res.json({status:asset.status,assetId:asset.id,playbackId,duration:asset.duration||null});
+    res.json({status:asset.status,assetId:asset.id,playbackId,duration:asset.duration||null,videoId:owned.rows[0].id});
   } catch(e) { res.status(500).json({error:e.message||'Не удалось проверить загрузку'}); }
 });
 app.post('/api/videos/:id/cover', requireDb, auth, uploadImage.single('cover'), async (req,res) => {
