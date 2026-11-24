@@ -134,6 +134,12 @@ function SettingsDialog({settings,onChange,onClose,user,onLogout}) {
      <div className="setting-row"><div><b>Размер текста</b><small>Масштаб подписей и заголовков</small></div><select value={settings.fontSize} onChange={e=>update('fontSize',e.target.value)}><option value="small">Маленький</option><option value="normal">Обычный</option><option value="large">Крупный</option></select></div>
      <div className="setting-row"><div><b>Плотность карточек</b><small>Больше видео на одном экране</small></div><div className="setting-choice"><button className={!settings.compact?'chosen':''} onClick={()=>update('compact',false)}>Обычная</button><button className={settings.compact?'chosen':''} onClick={()=>update('compact',true)}>Компактная</button></div></div>
      <div className="setting-row"><div><b>Уменьшить анимации</b><small>Меньше движения и переходов</small></div><input type="checkbox" checked={settings.reduceMotion} onChange={e=>update('reduceMotion',e.target.checked)}/></div>
+     <div className="settings-section-title ambient-title">Атмосфера</div>
+     <div className="setting-row"><div><b>Эффект на фоне</b><small>Снег или падающие лепестки сакуры</small></div><select value={settings.effect||'none'} onChange={e=>update('effect',e.target.value)}><option value="none">Выключено</option><option value="snow">Снег ❄</option><option value="sakura">Сакура 🌸</option></select></div>
+     {(settings.effect||'none')!=='none'&&<>
+      <div className="setting-row"><div><b>Количество частиц</b><small>{settings.effectDensity||38}% · меньше или больше эффекта</small></div><input aria-label="Количество частиц" type="range" min="10" max="100" value={settings.effectDensity||38} onChange={e=>update('effectDensity',Number(e.target.value))}/></div>
+      <div className="setting-row"><div><b>Скорость</b><small>Темп движения частиц</small></div><select value={settings.effectSpeed||'normal'} onChange={e=>update('effectSpeed',e.target.value)}><option value="slow">Медленно</option><option value="normal">Обычно</option><option value="fast">Быстро</option></select></div>
+     </>}
     </>}
     {section==='Воспроизведение'&&<><div className="settings-section-title">Плеер</div>
      <div className="setting-row"><div><b>Автовоспроизведение</b><small>Запускать видео автоматически при открытии</small></div><input type="checkbox" checked={settings.autoplay} onChange={e=>update('autoplay',e.target.checked)}/></div>
@@ -156,6 +162,14 @@ function ProfileDialog({profile,onClose,onSubscribe,own}) {
  return <div className="profile-backdrop" onClick={onClose}><section className="profile-dialog" onClick={e=>e.stopPropagation()}><button className="profile-close" onClick={onClose}><X/></button><div className="profile-cover"><span>MIRVEX CREATOR</span></div><div className="profile-main"><div className="profile-large-avatar">{(profile.user.username?.[0]||'M').toUpperCase()}</div><div className="profile-identity"><h2>{profile.user.username}</h2><small>@{profile.user.username} · MIRVEX</small></div>{!own&&<button className="profile-follow" onClick={()=>onSubscribe(!profile.isFollowing)}>{profile.isFollowing?'Вы подписаны':'Подписаться'}</button>}</div><div className="profile-stats"><div><b>{Number(profile.followers||0).toLocaleString('ru-RU')}</b><span>Подписчики</span></div><div><b>{Number(profile.likes||0).toLocaleString('ru-RU')}</b><span>Лайки</span></div><div><b>{Number(profile.videos||0).toLocaleString('ru-RU')}</b><span>Видео</span></div></div><div className="profile-video-heading">Публичные видео</div><div className="profile-videos">{profile.videosList?.length?profile.videosList.map(v=><div key={v.id} className="profile-video-item"><img src={v.image}/><span>{v.title}</span></div>):<p>Пока нет опубликованных видео</p>}</div></section></div>;
 }
 
+
+function AmbientEffect({type,density=35,speed='normal'}) {
+ if(!type||type==='none') return null;
+ const count=Math.max(8,Math.min(90,Math.round(Number(density)*0.9)));
+ const glyph=type==='snow'?'❄':'✿';
+ return <div className={'ambient-effect ambient-'+type+' speed-'+speed} aria-hidden="true">{Array.from({length:count},(_,i)=><span key={i} style={{left:((i*37)%100)+'%',animationDelay:('-'+((i*13)%24))+'s',animationDuration:(speed==='slow'?24:speed==='fast'?9:16)+((i*7)%12)+'s',fontSize:(type==='snow'?8+(i*5)%12:10+(i*7)%13)+'px',opacity:.25+((i*11)%65)/100}}>{glyph}</span>)}</div>;
+}
+
 function App(){
  const [active,setActive]=useState('Главная');
  const [uploadOpen,setUploadOpen]=useState(false);
@@ -165,7 +179,7 @@ function App(){
  const [profile,setProfile]=useState(null);
  const [social,setSocial]=useState({likes:0,dislikes:0,userReaction:null,comments:[]});
  const [commentText,setCommentText]=useState('');
- const [settings,setSettings]=useState(()=>{try{return {...{theme:'dark',accent:'violet',fontSize:'normal',compact:false,reduceMotion:false,autoplay:false},...JSON.parse(localStorage.getItem('mirvex_settings')||'{}')}}catch{return {theme:'dark',fontSize:'normal',compact:false,reduceMotion:false,autoplay:false}}});
+ const [settings,setSettings]=useState(()=>{try{return {...{theme:'dark',accent:'violet',fontSize:'normal',compact:false,reduceMotion:false,autoplay:false,effect:'none',effectDensity:38,effectSpeed:'normal'},...JSON.parse(localStorage.getItem('mirvex_settings')||'{}')}}catch{return {theme:'dark',accent:'violet',fontSize:'normal',compact:false,reduceMotion:false,autoplay:false,effect:'none',effectDensity:38,effectSpeed:'normal'}}});
  useEffect(()=>{localStorage.setItem('mirvex_settings',JSON.stringify(settings));},[settings]);
  const [token,setToken]=useState(()=>localStorage.getItem('mirvex_token')||'');
  const [user,setUser]=useState(null);
@@ -225,6 +239,7 @@ function App(){
   </div>
   {profileOpen&&<ProfileDialog profile={profile} own={String(profile?.user?.id)===String(user?.id)} onClose={()=>setProfileOpen(false)} onSubscribe={subscribe}/ >}{settingsOpen&&<SettingsDialog settings={settings} onChange={setSettings} onClose={()=>setSettingsOpen(false)} user={user} onLogout={()=>{logout();setSettingsOpen(false)}}/>}{uploadOpen&&<UploadDialog token={token} onClose={()=>setUploadOpen(false)} onUploaded={addUploaded}/>}{authOpen&&<AuthDialog onClose={()=>setAuthOpen(false)} onAuth={onAuth}/>}
   {selected&&<div className="modal-backdrop" onClick={()=>setSelected(null)}><div className="video-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setSelected(null)}><X/></button><div className="modal-player">{selected.videoUrl&&<MuxVideoPlayer src={selected.videoUrl} videoId={selected.id} title={selected.title} channel={selected.channel} autoplay={settings.autoplay}/>}</div><div className="modal-details"><h2>{selected.title}</h2><div className="modal-meta"><button className="modal-channel-link" onClick={()=>openProfile(selected.ownerId)}>{selected.channel}</button> · {selected.views}</div><p>{selected.isPublic?'Публичное видео MIRVEX.':'Это видео доступно только тебе, пока ты его не опубликуешь.'}</p>{selected.ownerId&&user&&String(selected.ownerId)===String(user.id)&&<button className="publish-btn" onClick={()=>togglePublish(selected)}>{selected.isPublic?'Скрыть из общей ленты':'Опубликовать для всех'}</button>}<div className="video-reactions"><button className={social.userReaction==='like'?'reaction-active':''} onClick={()=>reactToVideo('like')}><ThumbsUp size={18}/><b>{social.likes||0}</b></button><button className={social.userReaction==='dislike'?'reaction-active':''} onClick={()=>reactToVideo('dislike')}><ThumbsUp className="dislike-icon" size={18}/><b>{social.dislikes||0}</b></button><span>{social.comments?.length||0} комментариев</span></div><div className="comments-area"><h3>Комментарии</h3><div className="comment-compose"><input value={commentText} maxLength={1000} onChange={e=>setCommentText(e.target.value)} onKeyDown={e=>e.key==='Enter'&&postComment()} placeholder={user?'Написать комментарий...':'Войди, чтобы комментировать'}/><button onClick={postComment} disabled={!commentText.trim()}>Отправить</button></div><div className="comment-list">{(social.comments||[]).map(c=><article className="comment-item" key={c.id}><div className="comment-avatar">{c.username?.[0]?.toUpperCase()||'M'}</div><div><b>{c.username}</b><p>{c.body}</p></div></article>)}</div></div></div></div></div>}
+  <AmbientEffect type={settings.reduceMotion?"none":settings.effect} density={settings.effectDensity} speed={settings.effectSpeed}/>
   <footer className="mobile-nav">{[['Главная',House],['Shorts',Flame],['Подписки',PlaySquare],['Профиль',UserRound],['Настройки',Settings]].map(([n,I])=><button key={n} onClick={()=>n==='Профиль'?openProfile(user?.id):n==='Настройки'?setSettingsOpen(true):(setActive(n),setCategory('Для вас'))}><I size={21}/><span>{n}</span></button>)}</footer>
  </div>
 }
