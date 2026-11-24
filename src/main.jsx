@@ -195,6 +195,10 @@ function AmbientEffect({type,density=35,speed='normal'}) {
 
 function App(){
  const [active,setActive]=useState('Главная');
+ const [displayedActive,setDisplayedActive]=useState('Главная');
+ const [pageLeaving,setPageLeaving]=useState(false);
+ const pageTransitionTimer=useRef(null);
+ useEffect(()=>{if(active===displayedActive)return;setPageLeaving(true);clearTimeout(pageTransitionTimer.current);pageTransitionTimer.current=setTimeout(()=>{setDisplayedActive(active);setPageLeaving(false);},130);return ()=>clearTimeout(pageTransitionTimer.current);},[active]);
  const [uploadOpen,setUploadOpen]=useState(false);
  const [authOpen,setAuthOpen]=useState(false);
  const [settingsOpen,setSettingsOpen]=useState(false);
@@ -243,7 +247,7 @@ function App(){
  const subscribe=async subscribed=>{if(!user){setAuthOpen(true);return;}try{const r=await fetch('https://mirvex-api.onrender.com/api/users/'+profile.user.id+'/subscribe',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({subscribed})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось изменить подписку');setProfile(p=>({...p,...d}));}catch(e){alert(e.message);}};
  useEffect(()=>{if(selected)loadSocial(selected);},[selected?.id,token]);
  const currentPlaylist=playlists.find(p=>p.id===selectedPlaylistId);
- const allVideos=active==='Избранное'?favoriteVideos:active==='Плейлисты'?(currentPlaylist?.videos||[]):category==='Мои видео'?uploaded:publicVideos;
+ const allVideos=displayedActive==='Избранное'?favoriteVideos:displayedActive==='Плейлисты'?(currentPlaylist?.videos||[]):category==='Мои видео'?uploaded:publicVideos;
  const filtered=useMemo(()=>allVideos.filter(v=> (v.title+' '+v.channel).toLowerCase().includes(query.toLowerCase())),[category,query,uploaded,publicVideos]);
  const nav=[['Главная',House],['Shorts',Flame],['Подписки',PlaySquare]];
  const library=[['История',History],['Плейлисты',Bookmark],['Избранное',ThumbsUp]];
@@ -265,17 +269,17 @@ function App(){
     {user?.isAdmin&&<button className="nav-item admin-nav" onClick={()=>setAdminOpen(true)}><ShieldCheck size={19}/><span>Админка</span></button>}
     <button className="sidebar-bottom" onClick={()=>setSettingsOpen(true)}><Settings size={16}/> Настройки</button>
    </aside>}
-   <main className="main page-transition" key={active}>
-    {active==='Shorts'?<><div className="page-heading"><div><div className="eyebrow">БЫСТРО И ПО ДЕЛУ</div><h1>Shorts</h1><p>Вертикальные видео, которые затягивают.</p></div></div><div className="shorts-grid">{shorts.map(s=><button className="short-card" key={s.id} onClick={()=>setSelected({title:s.title,channel:'MIRVEX Shorts',views:s.views+' просмотров',time:'Сейчас',duration:'0:32',image:s.image,avatar:'✦'})}><img src={s.image}/><span className="short-play"><Play fill="white"/></span><strong>{s.title}</strong><small>{s.views} просмотров</small></button>)}</div></>:<>
-    <section className="welcome"><div><div className="eyebrow">ТВОЯ ВИДЕОПЛАТФОРМА</div><h1>{active==='Главная'?'Смотри новое':active}</h1><p>{category==='Мои видео'?'Твоя личная видеотека.':'Публичные видео сообщества MIRVEX.'}</p></div><div className="welcome-art"><div className="art-orb orb-one"/><div className="art-orb orb-two"/><div className="art-play"><Play fill="white" size={25}/></div><span className="art-caption">YOUR NEXT<br/>FAVORITE VIDEO</span></div></section>
-    {active==='Главная'&&<div className="category-row">{categories.map(c=><button key={c} onClick={()=>setCategory(c)} className={'category '+(category===c?'selected':'')}>{c}</button>)}</div>}
-    {active==='Плейлисты'&&<section className="playlist-panel">
+   <main className={'main page-transition '+(pageLeaving?'page-leaving':'')} key={displayedActive}>
+    {displayedActive==='Shorts'?<><div className="page-heading"><div><div className="eyebrow">БЫСТРО И ПО ДЕЛУ</div><h1>Shorts</h1><p>Вертикальные видео, которые затягивают.</p></div></div><div className="shorts-grid">{shorts.map(s=><button className="short-card" key={s.id} onClick={()=>setSelected({title:s.title,channel:'MIRVEX Shorts',views:s.views+' просмотров',time:'Сейчас',duration:'0:32',image:s.image,avatar:'✦'})}><img src={s.image}/><span className="short-play"><Play fill="white"/></span><strong>{s.title}</strong><small>{s.views} просмотров</small></button>)}</div></>:<>
+    <section className="welcome"><div><div className="eyebrow">ТВОЯ ВИДЕОПЛАТФОРМА</div><h1>{displayedActive==='Главная'?'Смотри новое':displayedActive}</h1><p>{category==='Мои видео'?'Твоя личная видеотека.':'Публичные видео сообщества MIRVEX.'}</p></div><div className="welcome-art"><div className="art-orb orb-one"/><div className="art-orb orb-two"/><div className="art-play"><Play fill="white" size={25}/></div><span className="art-caption">YOUR NEXT<br/>FAVORITE VIDEO</span></div></section>
+    {displayedActive==='Главная'&&<div className="category-row">{categories.map(c=><button key={c} onClick={()=>setCategory(c)} className={'category '+(category===c?'selected':'')}>{c}</button>)}</div>}
+    {displayedActive==='Плейлисты'&&<section className="playlist-panel">
       <div className="playlist-create"><input value={playlistName} maxLength={60} onChange={e=>setPlaylistName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&createPlaylist()} placeholder="Название нового плейлиста"/><button onClick={createPlaylist} disabled={!playlistName.trim()}>Создать</button></div>
       {currentPlaylist?<div className="playlist-current"><button className="playlist-back" onClick={()=>setSelectedPlaylistId(null)}>← Все плейлисты</button><button className="playlist-delete" onClick={()=>deletePlaylist(currentPlaylist.id)}>Удалить плейлист</button><h2>{currentPlaylist.title}</h2></div>:<div className="playlist-list">{playlists.map(p=><button className="playlist-card" key={p.id} onClick={()=>setSelectedPlaylistId(p.id)}><span className="playlist-art"><Bookmark size={23}/></span><b>{p.title}</b><small>{p.videos?.length||0} видео</small></button>)}{playlists.length===0&&<p className="playlist-empty">Плейлистов пока нет. Создай первый!</p>}</div>}
     </section>}
-    <div className="section-title"><div><h2>{active==='Избранное'?'Избранное':active==='Плейлисты'?(currentPlaylist?'Видео в плейлисте':'Твои плейлисты'):category==='Мои видео'?'Мои видео':'Свежие видео'}</h2><span>{active==='Избранное'?'Видео, которые ты сохранил':active==='Плейлисты'?'Твоя личная коллекция':category==='Мои видео'?'Видишь только ты':'Видео, опубликованные для всех'}</span></div><button className="sort-btn">Для вас <ChevronDown size={16}/></button></div>
+    <div className="section-title"><div><h2>{displayedActive==='Избранное'?'Избранное':displayedActive==='Плейлисты'?(currentPlaylist?'Видео в плейлисте':'Твои плейлисты'):category==='Мои видео'?'Мои видео':'Свежие видео'}</h2><span>{displayedActive==='Избранное'?'Видео, которые ты сохранил':displayedActive==='Плейлисты'?'Твоя личная коллекция':category==='Мои видео'?'Видишь только ты':'Видео, опубликованные для всех'}</span></div><button className="sort-btn">Для вас <ChevronDown size={16}/></button></div>
     <div className="video-grid">{filtered.map(v=><article className="video-card" key={v.id}><button className="thumb" onClick={()=>setSelected(v)}><img src={v.image} alt=""/><span className="duration">{v.duration}</span><span className="thumb-hover"><Play fill="white"/></span></button><div className="video-info"><div className="channel-avatar">{v.avatar}</div><div className="video-copy"><button className="video-title" onClick={()=>setSelected(v)}>{v.title}</button><button className="channel-name channel-link" onClick={()=>openProfile(v.ownerId)}>{v.channel}</button><div className="video-meta">{v.views} · {v.time}</div></div><button className="more-btn" aria-label="Ещё"><MoreHorizontal size={19}/></button></div></article>)}</div>
-    {filtered.length===0&&active!=='Плейлисты'&&<div className="empty-state"><Film size={30}/><h3>{category==='Мои видео'?(user?'Пока нет загруженных видео':'Войди в аккаунт'):'Пока нет публичных видео'}</h3><p>{category==='Мои видео'?(user?'Загружай ролики — они появятся здесь.':'Создай аккаунт или войди, чтобы пользоваться библиотекой.'):'Стань первым, кто опубликует видео в MIRVEX.'}</p>{!user&&category==='Мои видео'&&<button className="upload-submit" onClick={()=>setAuthOpen(true)}>Войти / Регистрация</button>}</div>}
+    {filtered.length===0&&displayedActive!=='Плейлисты'&&<div className="empty-state"><Film size={30}/><h3>{category==='Мои видео'?(user?'Пока нет загруженных видео':'Войди в аккаунт'):'Пока нет публичных видео'}</h3><p>{category==='Мои видео'?(user?'Загружай ролики — они появятся здесь.':'Создай аккаунт или войди, чтобы пользоваться библиотекой.'):'Стань первым, кто опубликует видео в MIRVEX.'}</p>{!user&&category==='Мои видео'&&<button className="upload-submit" onClick={()=>setAuthOpen(true)}>Войти / Регистрация</button>}</div>}
 
     </>}
    </main>
