@@ -215,7 +215,8 @@ function App(){
  const postComment=async()=>{if(!user){setAuthOpen(true);return;}const body=commentText.trim();if(!body)return;try{const r=await fetch('https://mirvex-api.onrender.com/api/videos/'+selected.id+'/comments',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({body})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось отправить комментарий');setSocial(x=>({...x,comments:[d.comment,...x.comments]}));setCommentText('');}catch(e){alert(e.message);}};
  const subscribe=async subscribed=>{if(!user){setAuthOpen(true);return;}try{const r=await fetch('https://mirvex-api.onrender.com/api/users/'+profile.user.id+'/subscribe',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({subscribed})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось изменить подписку');setProfile(p=>({...p,...d}));}catch(e){alert(e.message);}};
  useEffect(()=>{if(selected)loadSocial(selected);},[selected?.id,token]);
- const currentPlaylist=playlists.find(p=>p.id===selectedPlaylistId);\n const allVideos=active==='Избранное'?favoriteVideos:active==='Плейлисты'?(currentPlaylist?.videos||[]):category==='Мои видео'?uploaded:publicVideos;
+ const currentPlaylist=playlists.find(p=>p.id===selectedPlaylistId);
+ const allVideos=active==='Избранное'?favoriteVideos:active==='Плейлисты'?(currentPlaylist?.videos||[]):category==='Мои видео'?uploaded:publicVideos;
  const filtered=useMemo(()=>allVideos.filter(v=> (v.title+' '+v.channel).toLowerCase().includes(query.toLowerCase())),[category,query,uploaded,publicVideos]);
  const nav=[['Главная',House],['Shorts',Flame],['Подписки',PlaySquare]];
  const library=[['История',History],['Плейлисты',Bookmark],['Избранное',ThumbsUp]];
