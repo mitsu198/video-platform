@@ -5,24 +5,9 @@ import { createRoot } from 'react-dom/client';
 import { Search, House, Compass, PlaySquare, Clock3, ThumbsUp, Flame, Clapperboard, Menu, Plus, Bell, Mic, MoreHorizontal, Play, X, ChevronDown, Film, Radio, UserRound, Settings, History, Bookmark, ArrowUpRight } from 'lucide-react';
 import './styles.css';
 
-const videos = [
-  { id:1, title:'Почему современные игры стали такими красивыми?', channel:'Код и пиксели', views:'248 тыс. просмотров', time:'2 дня назад', duration:'18:42', image:'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=900&q=85', avatar:'🎮', category:'Игры' },
-  { id:2, title:'Тихое утро в Токио — прогулка без слов', channel:'slowdays', views:'91 тыс. просмотров', time:'5 дней назад', duration:'24:16', image:'https://images.unsplash.com/photo-1540959733332-eab4deabc9e2?w=900&q=85', avatar:'🌆', category:'Путешествия' },
-  { id:3, title:'Собрал рабочее место мечты за 30 дней', channel:'Макс делает', views:'512 тыс. просмотров', time:'1 неделю назад', duration:'13:08', image:'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=900&q=85', avatar:'🛠️', category:'Технологии' },
-  { id:4, title:'Как звучит город после полуночи', channel:'NO SIGNAL', views:'37 тыс. просмотров', time:'3 дня назад', duration:'09:51', image:'https://images.unsplash.com/photo-1519608487953-e999c86e7455?w=900&q=85', avatar:'🌙', category:'Музыка' },
-  { id:5, title:'Готовим идеальную пасту дома', channel:'На вкус', views:'1,2 млн просмотров', time:'2 недели назад', duration:'11:32', image:'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?w=900&q=85', avatar:'🍝', category:'Еда' },
-  { id:6, title:'История одного невероятного путешествия', channel:'За горизонтом', views:'184 тыс. просмотров', time:'6 дней назад', duration:'32:04', image:'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=900&q=85', avatar:'🏔️', category:'Путешествия' },
-  { id:7, title:'Новый взгляд на минималистичный дизайн', channel:'form follows', views:'76 тыс. просмотров', time:'1 день назад', duration:'16:27', image:'https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?w=900&q=85', avatar:'◻️', category:'Технологии' },
-  { id:8, title:'Лучшие моменты недели — выпуск №08', channel:'Коротко', views:'803 тыс. просмотров', time:'4 дня назад', duration:'08:14', image:'https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=900&q=85', avatar:'✨', category:'Развлечения' },
-];
-const shorts = [
-  {id:1,title:'Когда поймал идеальный кадр',views:'1,4 млн',image:'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=600&q=85'},
-  {id:2,title:'Маленькие радости большого города',views:'842 тыс.',image:'https://images.unsplash.com/photo-1519608487953-e999c86e7455?w=600&q=85'},
-  {id:3,title:'Это выглядит нереально',views:'2,1 млн',image:'https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=600&q=85'},
-  {id:4,title:'30 секунд спокойствия',views:'326 тыс.',image:'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600&q=85'},
-  {id:5,title:'Ночной город с высоты',views:'1 млн',image:'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=600&q=85'},
-];
-const categories=['Все','Игры','Музыка','Технологии','Путешествия','Еда','Развлечения','Обучение','Спорт'];
+const videos = [];
+const shorts = [];
+const categories=['Все','Мои видео'];
 
 function MuxVideoPlayer({ src, videoId, title, channel }) {
  const videoRef = useRef(null);
