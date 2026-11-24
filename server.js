@@ -22,7 +22,7 @@ const uploadImage = multer({ storage: multer.memoryStorage(), limits: { fileSize
 app.use(cors({ origin(origin, callback) {
   if (!origin || origin === FRONTEND_ORIGIN) return callback(null, true);
   return callback(new Error('Origin not allowed'));
-}, methods: ['GET','POST','PUT'], allowedHeaders: ['Content-Type','Authorization'] }));
+}, methods: ['GET','POST','PUT','DELETE'], allowedHeaders: ['Content-Type','Authorization'] }));
 app.use(express.json({ limit: '32kb' }));
 
 async function initDb() {
