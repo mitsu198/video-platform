@@ -173,3 +173,7 @@ button:active:not(:disabled) { transform:scale(.975); }
 
 .page-transition.page-leaving { animation:mirvex-page-out 130ms cubic-bezier(.4,0,1,1) both; pointer-events:none; }
 @keyframes mirvex-page-out { from {opacity:1;transform:translate3d(0,0,0)} to {opacity:0;transform:translate3d(0,-5px,0)} }
+
+.reduce-motion .motion-layer, .reduce-motion .motion-panel, .reduce-motion .motion-layer * {
+ animation-duration:.01ms!important; animation-delay:0ms!important; transition-duration:.01ms!important;
+}
