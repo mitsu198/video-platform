@@ -153,16 +153,12 @@ function AdminDialog({token,onClose,onDelete,onOpenVideo}){
  return <div className="settings-backdrop admin-backdrop" onClick={onClose}><section className="admin-dialog" onClick={e=>e.stopPropagation()}><header className="settings-header"><div><div className="eyebrow">MIRVEX CONTROL</div><h2><ShieldCheck size={23}/> Админ-панель</h2><p>Проверяй жалобы и принимай решение по каждому видео.</p></div><button className="settings-close" onClick={onClose}><X/></button></header><div className="admin-report-list">{loading?<p>Загружаем жалобы...</p>:error?<p className="upload-message error">{error}</p>:reports.length===0?<p>Жалоб пока нет. Всё спокойно.</p>:reports.map(r=><article className="admin-report" key={r.id}><div className="admin-report-top"><span className={'report-status status-'+r.status}>{r.status==='new'?'Новая':r.status==='reviewed'?'Рассмотрена':'Отклонена'}</span><small>{new Date(r.created_at).toLocaleString('ru-RU')}</small></div><h3>{r.video_title}</h3><div className="admin-report-meta">Автор видео: <b>{r.videoOwner}</b> · Жалоба от: <b>{r.reporter_name}</b></div><p><b>Причина:</b> {r.reason}</p>{r.details&&<p className="report-details">{r.details}</p>}<div className="admin-report-actions">{r.video_url&&<a className="report-link" href={r.video_url} target="_blank" rel="noreferrer"><ExternalLink size={15}/> Ссылка на видео</a>}{r.streamUrl&&<button onClick={()=>onOpenVideo({id:r.videoId,ownerId:String(r.owner_id||''),title:r.video_title,channel:r.videoOwner,views:'Жалоба',time:'',image:r.image,videoUrl:r.streamUrl,isPublic:true})}><ExternalLink size={15}/> Открыть видео</button>}{r.videoId&&<button className="danger-action" onClick={()=>remove(r)}><Trash2 size={15}/> Удалить видео</button>}{r.status==='new'&&<><button onClick={()=>setStatus(r.id,'reviewed')}>Рассмотрена</button><button onClick={()=>setStatus(r.id,'rejected')}>Отклонить жалобу</button></>}</div></article>)}</div></section></div>;
 }
 
-function SettingsDialog({settings,onChange,onClose,user,onLogout}) {
+function SettingsPage({settings,onChange,user,onLogout}) {
  const [section,setSection]=useState('Внешний вид');
- const [closing,setClosing]=useState(false);
- const closeTimer=useRef(null);
- const close=()=>{if(closing)return;setClosing(true);closeTimer.current=setTimeout(onClose,settings.reduceMotion?20:460);};
- useEffect(()=>()=>clearTimeout(closeTimer.current),[]);
  const sections=[['Внешний вид','◐'],['Воспроизведение','▷'],['Уведомления','♧'],['Конфиденциальность','◇'],['Аккаунт','○']];
  const update=(key,value)=>onChange({...settings,[key]:value});
- return <div className={'settings-backdrop motion-layer '+(closing?'is-closing':'')} onClick={close}><section className="settings-dialog motion-panel" onClick={e=>e.stopPropagation()}>
-  <header className="settings-header"><div><div className="eyebrow">MIRVEX PERSONAL</div><h2>Настройки</h2><p>Настрой платформу под себя.</p></div><button className="settings-close" onClick={close}><X/></button></header>
+ return <section className="settings-dialog settings-page page-transition">
+  <header className="settings-header"><div><div className="eyebrow">MIRVEX PERSONAL</div><h2>Настройки</h2><p>Настрой платформу под себя.</p></div></header>
   <div className="settings-body"><nav className="settings-tabs">{sections.map(([name,mark])=><button key={name} className={section===name?'current':''} onClick={()=>setSection(name)}><span>{mark}</span>{name}</button>)}</nav>
    <div className="settings-content">
     {section==='Внешний вид'&&<><div className="settings-section-title">Интерфейс</div>
@@ -196,23 +192,19 @@ function SettingsDialog({settings,onChange,onClose,user,onLogout}) {
     </>}
     {section==='Аккаунт'&&<><div className="settings-section-title">Твой аккаунт</div>
      <div className="account-settings-card"><div className="account-settings-avatar">{(user?.username?.[0]||'M').toUpperCase()}</div><div><b>{user?.username||'Гость'}</b><small>{user?.email||'Войди, чтобы синхронизировать библиотеку'}</small></div></div>
-     {user&&<button className="settings-logout" onClick={()=>{onLogout();close();}}>Выйти из аккаунта</button>}
+     {user&&<button className="settings-logout" onClick={onLogout}>Выйти из аккаунта</button>}
      <p className="settings-note">Параметры интерфейса сохраняются на этом устройстве.</p>
     </>}
    </div>
   </div>
-  <footer className="settings-footer"><span>Изменения сохраняются автоматически</span><button onClick={close}>Готово</button></footer>
- </section></div>;
+  <footer className="settings-footer"><span>Изменения сохраняются автоматически</span><span className="settings-saved">Сохранено</span></footer>
+ </section>;
 }
 
 
-function ProfileDialog({profile,onClose,onSubscribe,own}) {
- const [closing,setClosing]=useState(false);
- const closeTimer=useRef(null);
- const close=()=>{if(closing)return;setClosing(true);closeTimer.current=setTimeout(onClose,460);};
- useEffect(()=>()=>clearTimeout(closeTimer.current),[]);
+function ProfilePage({profile,onSubscribe,own}) {
  if(!profile)return null;
- return <div className={'profile-backdrop motion-layer '+(closing?'is-closing':'')} onClick={close}><section className="profile-dialog motion-panel" onClick={e=>e.stopPropagation()}><button className="profile-close" onClick={close}><X/></button><div className="profile-cover"><span>MIRVEX CREATOR</span></div><div className="profile-main"><div className="profile-large-avatar">{(profile.user.username?.[0]||'M').toUpperCase()}</div><div className="profile-identity"><h2>{profile.user.username}</h2><small>@{profile.user.username} · MIRVEX</small></div>{!own&&<button className="profile-follow" onClick={()=>onSubscribe(!profile.isFollowing)}>{profile.isFollowing?'Вы подписаны':'Подписаться'}</button>}</div><div className="profile-stats"><div><b>{Number(profile.followers||0).toLocaleString('ru-RU')}</b><span>Подписчики</span></div><div><b>{Number(profile.likes||0).toLocaleString('ru-RU')}</b><span>Лайки</span></div><div><b>{Number(profile.videos||0).toLocaleString('ru-RU')}</b><span>Видео</span></div></div><div className="profile-video-heading">Публичные видео</div><div className="profile-videos">{profile.videosList?.length?profile.videosList.map(v=><div key={v.id} className="profile-video-item"><img src={v.image}/><span>{v.title}</span></div>):<p>Пока нет опубликованных видео</p>}</div></section></div>;
+ return <section className="profile-dialog profile-page page-transition"><div className="profile-cover"><span>MIRVEX CREATOR</span></div><div className="profile-main"><div className="profile-large-avatar">{(profile.user.username?.[0]||'M').toUpperCase()}</div><div className="profile-identity"><h2>{profile.user.username}</h2><small>@{profile.user.username} · MIRVEX</small></div>{!own&&<button className="profile-follow" onClick={()=>onSubscribe(!profile.isFollowing)}>{profile.isFollowing?'Вы подписаны':'Подписаться'}</button>}</div><div className="profile-stats"><div><b>{Number(profile.followers||0).toLocaleString('ru-RU')}</b><span>Подписчики</span></div><div><b>{Number(profile.likes||0).toLocaleString('ru-RU')}</b><span>Лайки</span></div><div><b>{Number(profile.videos||0).toLocaleString('ru-RU')}</b><span>Видео</span></div></div><div className="profile-video-heading">Публичные видео</div><div className="profile-videos">{profile.videosList?.length?profile.videosList.map(v=><div key={v.id} className="profile-video-item"><img src={v.image}/><span>{v.title}</span></div>):<p>Пока нет опубликованных видео</p>}</div></section>;
 }
 
 
@@ -286,16 +278,22 @@ function ShortsFeed({items,onOpen,onProfile,onLike}) {
  </div>;
 }
 
+const ROUTE_PATHS={'Главная':'/','В тренде':'/trending','Shorts':'/shorts','Подписки':'/subscriptions','Студия':'/studio','История':'/history','Смотреть позже':'/watch-later','Плейлисты':'/playlists','Избранное':'/favorites','Профиль':'/profile','Настройки':'/settings'};
+function readMirvexRoute(){
+ let path=decodeURIComponent(window.location.pathname||'/');
+ while(path.length>1&&path.endsWith('/'))path=path.slice(0,-1);
+ if(path==='/profile'||path.startsWith('/profile/'))return {page:'Профиль',profileId:path==='/profile'?null:path.slice('/profile/'.length),playlistId:null};
+ if(path.startsWith('/playlists/'))return {page:'Плейлисты',profileId:null,playlistId:path.slice('/playlists/'.length)};
+ const found=Object.entries(ROUTE_PATHS).find(([,url])=>url===path);
+ return {page:found?found[0]:'Главная',profileId:null,playlistId:null};
+}
 function App(){
- const [active,setActive]=useState('Главная');
- const [displayedActive,setDisplayedActive]=useState('Главная');
- const [pageLeaving,setPageLeaving]=useState(false);
- const pageTransitionTimer=useRef(null);
- useEffect(()=>{if(active===displayedActive)return;setPageLeaving(true);clearTimeout(pageTransitionTimer.current);pageTransitionTimer.current=setTimeout(()=>{setDisplayedActive(active);setPageLeaving(false);},130);return ()=>clearTimeout(pageTransitionTimer.current);},[active]);
+ const [route,setRoute]=useState(()=>readMirvexRoute());
+ const active=route.page;
+ const displayedActive=route.page;
+ const pageLeaving=false;
  const [uploadOpen,setUploadOpen]=useState(false);
  const [authOpen,setAuthOpen]=useState(false);
- const [settingsOpen,setSettingsOpen]=useState(false);
- const [profileOpen,setProfileOpen]=useState(false);
  const [reportOpen,setReportOpen]=useState(false);
  const [adminOpen,setAdminOpen]=useState(false);
  const [notificationsOpen,setNotificationsOpen]=useState(false);
@@ -314,7 +312,23 @@ function App(){
  const [favoriteVideos,setFavoriteVideos]=useState([]);
  const [playlists,setPlaylists]=useState([]);
  const [playlistName,setPlaylistName]=useState('');
- const [selectedPlaylistId,setSelectedPlaylistId]=useState(null);
+ const [selectedPlaylistId,setSelectedPlaylistId]=useState(()=>readMirvexRoute().playlistId);
+ const navigate=(page,params={})=>{
+  const path=params.profileId?'/profile/'+encodeURIComponent(String(params.profileId)):params.playlistId?'/playlists/'+encodeURIComponent(String(params.playlistId)):(ROUTE_PATHS[page]||'/');
+  if(window.location.pathname!==path)window.history.pushState({},'',path);
+  setRoute(readMirvexRoute());setSelectedPlaylistId(params.playlistId||null);setNotificationsOpen(false);
+ };
+ useEffect(()=>{const onPopState=()=>{const next=readMirvexRoute();setRoute(next);setSelectedPlaylistId(next.playlistId||null);};window.addEventListener('popstate',onPopState);return()=>window.removeEventListener('popstate',onPopState);},[]);
+ useEffect(()=>{if(token&&['Избранное','Плейлисты'].includes(active))loadLibrary(token);},[active,token]);
+ useEffect(()=>{
+  if(active!=='Профиль')return;
+  const id=route.profileId||user?.id;if(!id){setProfile(null);setAuthOpen(true);return;}
+  let live=true;
+  fetch('https://mirvex-api.onrender.com/api/users/'+id+'/profile',{headers:token?{Authorization:'Bearer '+token}:{}})
+   .then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось открыть профиль');return d;})
+   .then(d=>{if(live)setProfile({...d,videosList:d.videos||[]});}).catch(e=>{if(live)alert(e.message);});
+  return()=>{live=false;};
+ },[active,route.profileId,token,user?.id]);
  const [favoriteIds,setFavoriteIds]=useState([]);
  const [watchLaterIds,setWatchLaterIds]=useState(()=>{try{return JSON.parse(localStorage.getItem('mirvex_watch_later')||'[]')}catch{return []}});
  const [watchHistory,setWatchHistory]=useState(()=>{try{return JSON.parse(localStorage.getItem('mirvex_watch_history')||'[]')}catch{return []}});
@@ -365,7 +379,7 @@ function App(){
  const [sidebar,setSidebar]=useState(true);
  const [liked,setLiked]=useState([]);
  const loadSocial=async video=>{if(!video?.id)return;try{const r=await fetch('https://mirvex-api.onrender.com/api/videos/'+video.id+'/social',{headers:token?{Authorization:'Bearer '+token}:{}});const d=await r.json();if(r.ok)setSocial(d);}catch{}};
- const openProfile=async id=>{if(!id){if(user)id=user.id;else{setAuthOpen(true);return;}}try{const r=await fetch('https://mirvex-api.onrender.com/api/users/'+id+'/profile',{headers:token?{Authorization:'Bearer '+token}:{}});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось открыть профиль');setProfile({...d,videosList:d.videos||[]});setProfileOpen(true);}catch(e){alert(e.message);}};
+ const openProfile=async id=>{if(!id){if(user)id=user.id;else{setAuthOpen(true);return;}}navigate('Профиль',{profileId:id});};
  const reactToVideo=async reaction=>{if(!user){setAuthOpen(true);return;}try{const next=social.userReaction===reaction?null:reaction;const r=await fetch('https://mirvex-api.onrender.com/api/videos/'+selected.id+'/reaction',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({reaction:next})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось сохранить реакцию');setSocial(x=>({...x,...d}));}catch(e){alert(e.message);}};
  const likeShort=async video=>{if(!user){setAuthOpen(true);return;}try{const r=await fetch('https://mirvex-api.onrender.com/api/videos/'+video.id+'/reaction',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({reaction:'like'})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось поставить лайк');setShortVideos(items=>items.map(v=>v.id===video.id?{...v,...d}:v));}catch(e){alert(e.message);}};
  const postComment=async()=>{if(!user){setAuthOpen(true);return;}const body=commentText.trim();if(!body)return;try{const r=await fetch('https://mirvex-api.onrender.com/api/videos/'+selected.id+'/comments',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({body})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось отправить комментарий');setSocial(x=>({...x,comments:[d.comment,...x.comments]}));setCommentText('');}catch(e){alert(e.message);}};
@@ -384,29 +398,29 @@ function App(){
  const library=[['История',History],['Смотреть позже',Clock3],['Плейлисты',Bookmark],['Избранное',ThumbsUp]];
  return <div className={"app theme-"+settings.theme+" accent-"+(settings.accent||"violet")+" font-"+settings.fontSize+(settings.compact?" compact-grid":"")+(settings.reduceMotion?" reduce-motion":"")}>
   <header className="topbar">
-   <div className="brand-area"><button className="icon-btn menu-btn" onClick={()=>setSidebar(!sidebar)} aria-label="Меню"><Menu/></button><a className="brand" href="#" onClick={()=>{setActive('Главная');setCategory('Для вас')}}><span className="brand-mark brand-monogram">M</span><span>MIRVEX<span className="brand-dot">.</span></span></a></div>
+   <div className="brand-area"><button className="icon-btn menu-btn" onClick={()=>setSidebar(!sidebar)} aria-label="Меню"><Menu/></button><a className="brand" href="/" onClick={e=>{e.preventDefault();navigate('Главная');setCategory('Для вас')}}><span className="brand-mark brand-monogram">M</span><span>MIRVEX<span className="brand-dot">.</span></span></a></div>
    <div className="search-wrap"><div className="search-box"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Поиск видео и каналов"/>{query&&<button className="clear-search" onClick={()=>setQuery('')}><X size={16}/></button>}</div><button className="icon-btn mic-btn" aria-label="Голосовой поиск"><Mic size={18}/></button></div>
    <div className="top-actions"><button className="create-btn" onClick={()=>user?setUploadOpen(true):setAuthOpen(true)}><Plus size={18}/> <span>Создать</span></button><button className="icon-btn notification-btn" aria-label="Уведомления" onClick={()=>user?setNotificationsOpen(v=>!v):setAuthOpen(true)}><Bell size={19}/>{notificationUnread>0&&<i className="notification-dot">{notificationUnread>9?'9+':notificationUnread}</i>}</button><button className="profile-avatar" onClick={()=>user?openProfile(user.id):setAuthOpen(true)} title={user?'Профиль':'Войти'}>{user?(user.username?.[0]||'М').toUpperCase():'Войти'}</button></div>
   </header>
   <div className="layout">
    {sidebar&&<aside className="sidebar">
-    <nav>{nav.map(([label,Icon])=><button key={label} className={'nav-item '+(active===label?'active':'')} onClick={()=>{setActive(label);setCategory('Все')}}><Icon size={20}/><span>{label}</span></button>)}</nav>
+    <nav>{nav.map(([label,Icon])=><button key={label} className={'nav-item '+(active===label?'active':'')} onClick={()=>{navigate(label);setCategory('Все')}}><Icon size={20}/><span>{label}</span></button>)}</nav>
     <div className="side-divider"/>
     <div className="side-heading">Вы</div>
-    {library.map(([label,Icon])=><button key={label} className={'nav-item '+(active===label?'active':'')} onClick={()=>{setActive(label);setSelectedPlaylistId(null);if(label==='Избранное'&&token)loadLibrary(token);}}><Icon size={19}/><span>{label}</span></button>)}
+    {library.map(([label,Icon])=><button key={label} className={'nav-item '+(active===label?'active':'')} onClick={()=>navigate(label)}><Icon size={19}/><span>{label}</span></button>)}
     <div className="side-divider"/>
     <div className="side-heading">Ваши подписки</div>
     {['Дизайн без шума','Космос рядом','Точка сборки'].map((n,i)=><button className="subscription" key={n}><span className="sub-avatar">{['◉','✦','△'][i]}</span>{n}<i/></button>)}
     {user?.isAdmin&&<button className="nav-item admin-nav" onClick={()=>setAdminOpen(true)}><ShieldCheck size={19}/><span>Админка</span></button>}
-    <button className="sidebar-bottom" onClick={()=>setSettingsOpen(true)}><Settings size={16}/> Настройки</button>
+    <button className={'sidebar-bottom '+(active==='Настройки'?'active':'')} onClick={()=>navigate('Настройки')}><Settings size={16}/> Настройки</button>
    </aside>}
    <main className={'main page-transition '+(pageLeaving?'page-leaving':'')} key={displayedActive}>
-    {displayedActive==='Студия'?<StudioPage token={token} onLogin={()=>setAuthOpen(true)}/>:displayedActive==='Shorts'?<section className="shorts-page"><div className="shorts-page-heading"><div><div className="eyebrow">MIRVEX · VERTICAL VIDEO</div><h1>Shorts<span>.</span></h1><p>Короткие видео. Большие впечатления.</p></div><button className="shorts-upload-button" onClick={()=>user?setUploadOpen(true):setAuthOpen(true)}><Plus size={17}/> Создать Short</button></div><ShortsFeed items={shortVideos} onOpen={v=>setSelected(v)} onProfile={openProfile} onLike={likeShort}/></section>:<>
+    {displayedActive==='Настройки'?<SettingsPage settings={settings} onChange={setSettings} user={user} onLogout={logout}/>:displayedActive==='Профиль'?(profile?<ProfilePage profile={profile} own={String(profile?.user?.id)===String(user?.id)} onSubscribe={subscribe}/>:<section className="profile-page-loading"><div className="eyebrow">MIRVEX CREATOR</div><h2>Загружаем профиль…</h2></section>):displayedActive==='Студия'?<StudioPage token={token} onLogin={()=>setAuthOpen(true)}/>:displayedActive==='Shorts'?<section className="shorts-page"><div className="shorts-page-heading"><div><div className="eyebrow">MIRVEX · VERTICAL VIDEO</div><h1>Shorts<span>.</span></h1><p>Короткие видео. Большие впечатления.</p></div><button className="shorts-upload-button" onClick={()=>user?setUploadOpen(true):setAuthOpen(true)}><Plus size={17}/> Создать Short</button></div><ShortsFeed items={shortVideos} onOpen={v=>setSelected(v)} onProfile={openProfile} onLike={likeShort}/></section>:<>
     <section className="welcome"><div><div className="eyebrow">ТВОЯ ВИДЕОПЛАТФОРМА</div><h1>{displayedActive==='Главная'?'Смотри новое':displayedActive==='В тренде'?'Популярное сейчас':displayedActive}</h1><p>{displayedActive==='В тренде'?'Самые популярные видео за последние 7 дней.':category==='Мои видео'?'Твоя личная видеотека.':displayedActive==='Главная'?'Персональная подборка на основе твоих просмотров.':'Публичные видео сообщества MIRVEX.'}</p></div><div className="welcome-art"><div className="art-orb orb-one"/><div className="art-orb orb-two"/><div className="art-play"><Play fill="white" size={25}/></div><span className="art-caption">YOUR NEXT<br/>FAVORITE VIDEO</span></div></section>
     {displayedActive==='Главная'&&<div className="category-row">{categories.map(c=><button key={c} onClick={()=>setCategory(c)} className={'category '+(category===c?'selected':'')}>{c}</button>)}</div>}
     {displayedActive==='Главная'&&continueVideos.length>0&&<section className="continue-section"><div className="section-title"><div><h2>Продолжить просмотр</h2><span>Недавно открытые видео</span></div></div><div className="continue-strip">{continueVideos.map(v=><button className="continue-card" key={v.id} onClick={()=>setSelected(v)}><img loading="lazy" src={v.image} alt=""/><span><b>{v.title}</b><small>{v.channel}</small></span></button>)}</div></section>}{displayedActive==='Плейлисты'&&<section className="playlist-panel">
       <div className="playlist-create"><input value={playlistName} maxLength={60} onChange={e=>setPlaylistName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&createPlaylist()} placeholder="Название нового плейлиста"/><button onClick={createPlaylist} disabled={!playlistName.trim()}>Создать</button></div>
-      {currentPlaylist?<div className="playlist-current"><button className="playlist-back" onClick={()=>setSelectedPlaylistId(null)}>← Все плейлисты</button><button className="playlist-delete" onClick={()=>deletePlaylist(currentPlaylist.id)}>Удалить плейлист</button><h2>{currentPlaylist.title}</h2></div>:<div className="playlist-list">{playlists.map(p=><button className="playlist-card" key={p.id} onClick={()=>setSelectedPlaylistId(p.id)}><span className="playlist-art"><Bookmark size={23}/></span><b>{p.title}</b><small>{p.videos?.length||0} видео</small></button>)}{playlists.length===0&&<p className="playlist-empty">Плейлистов пока нет. Создай первый!</p>}</div>}
+      {currentPlaylist?<div className="playlist-current"><button className="playlist-back" onClick={()=>navigate('Плейлисты')}>← Все плейлисты</button><button className="playlist-delete" onClick={()=>deletePlaylist(currentPlaylist.id)}>Удалить плейлист</button><h2>{currentPlaylist.title}</h2></div>:<div className="playlist-list">{playlists.map(p=><button className="playlist-card" key={p.id} onClick={()=>navigate('Плейлисты',{playlistId:p.id})}><span className="playlist-art"><Bookmark size={23}/></span><b>{p.title}</b><small>{p.videos?.length||0} видео</small></button>)}{playlists.length===0&&<p className="playlist-empty">Плейлистов пока нет. Создай первый!</p>}</div>}
     </section>}
     <div className="section-title"><div><h2>{displayedActive==='Избранное'?'Избранное':displayedActive==='Смотреть позже'?'Смотреть позже':displayedActive==='История'?'История просмотров':displayedActive==='Плейлисты'?(currentPlaylist?'Видео в плейлисте':'Твои плейлисты'):category==='Мои видео'?'Мои видео':'Свежие видео'}</h2><span>{displayedActive==='Избранное'?'Видео, которые ты сохранил':displayedActive==='Смотреть позже'?'Твоя очередь просмотра':displayedActive==='История'?'Недавно просмотренные видео на этом устройстве':displayedActive==='Плейлисты'?'Твоя личная коллекция':category==='Мои видео'?'Видишь только ты':'Видео, опубликованные для всех'}</span></div><button className="sort-btn">Для вас <ChevronDown size={16}/></button></div>
     <div className="video-grid">{filtered.map(v=><article className="video-card" key={v.id}><button className="thumb" onClick={()=>setSelected(v)}><img src={v.image} alt=""/><span className="duration">{v.duration}</span><span className="thumb-hover"><Play fill="white"/></span></button><div className="video-info"><div className="channel-avatar">{v.avatar}</div><div className="video-copy"><button className="video-title" onClick={()=>setSelected(v)}>{v.title}</button><button className="channel-name channel-link" onClick={()=>openProfile(v.ownerId)}>{v.channel}</button><div className="video-meta">{v.views} · {v.time}</div></div><button className="more-btn" aria-label="Ещё"><MoreHorizontal size={19}/></button></div></article>)}</div>
@@ -417,10 +431,10 @@ function App(){
   </div>
   {notificationsOpen&&user&&<NotificationPanel token={token} onClose={()=>setNotificationsOpen(false)} onUnread={setNotificationUnread}/>}
   {adminOpen&&<AdminDialog token={token} onClose={()=>setAdminOpen(false)} onDelete={removeAdminVideo} onOpenVideo={v=>{setAdminOpen(false);setSelected(v);}}/>}{reportOpen&&selected&&<ReportDialog video={selected} token={token} onClose={()=>setReportOpen(false)}/>}
-  {profileOpen&&<ProfileDialog profile={profile} own={String(profile?.user?.id)===String(user?.id)} onClose={()=>setProfileOpen(false)} onSubscribe={subscribe}/ >}{settingsOpen&&<SettingsDialog settings={settings} onChange={setSettings} onClose={()=>setSettingsOpen(false)} user={user} onLogout={()=>logout()}/>}{uploadOpen&&<UploadDialog token={token} onClose={()=>setUploadOpen(false)} onUploaded={addUploaded}/>}{authOpen&&<AuthDialog onClose={()=>setAuthOpen(false)} onAuth={onAuth}/>}
+  {uploadOpen&&<UploadDialog token={token} onClose={()=>setUploadOpen(false)} onUploaded={addUploaded}/>}{authOpen&&<AuthDialog onClose={()=>setAuthOpen(false)} onAuth={onAuth}/>}
   {selected&&<div className="modal-backdrop" onClick={()=>setSelected(null)}><div className="video-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setSelected(null)}><X/></button><div className="modal-player">{selected.videoUrl&&<MuxVideoPlayer src={selected.videoUrl} videoId={selected.id} title={selected.title} channel={selected.channel} autoplay={settings.autoplay} token={token}/>}</div><div className="modal-details"><h2>{selected.title}</h2><div className="modal-meta"><button className="modal-channel-link" onClick={()=>openProfile(selected.ownerId)}>{selected.channel}</button> · {selected.views}</div><p>{selected.isPublic?'Публичное видео MIRVEX.':'Это видео доступно только тебе, пока ты его не опубликуешь.'}</p><div className="video-library-actions"><button className={'favorite-action '+(favoriteIds.includes(selected.id)?'saved':'')} onClick={()=>toggleFavorite(selected)}><Bookmark size={16}/>{favoriteIds.includes(selected.id)?'В избранном':'В избранное'}</button><button className={'favorite-action '+(watchLaterIds.includes(selected.id)?'saved':'')} onClick={()=>toggleWatchLater(selected)}><Clock3 size={16}/>{watchLaterIds.includes(selected.id)?'В списке «Смотреть позже»':'Смотреть позже'}</button>{playlists.length>0&&<div className="add-playlist"><select aria-label="Выбрать плейлист" id="mirvex-playlist-select">{playlists.map(p=><option key={p.id} value={p.id}>{p.title}</option>)}</select><button onClick={()=>{const el=document.getElementById('mirvex-playlist-select');if(el?.value)addToPlaylist(el.value);}}>В плейлист</button></div>}</div>{selected.ownerId&&user&&String(selected.ownerId)===String(user.id)&&<button className="publish-btn" onClick={()=>togglePublish(selected)}>{selected.isPublic?'Скрыть из общей ленты':'Опубликовать для всех'}</button>}{user&&selected.isPublic&&String(selected.ownerId)!==String(user.id)&&<button className="report-video-btn" onClick={()=>setReportOpen(true)}><Flag size={15}/> Пожаловаться</button>}<div className="video-reactions"><button className={social.userReaction==='like'?'reaction-active':''} onClick={()=>reactToVideo('like')}><ThumbsUp size={18}/><b>{social.likes||0}</b></button><button className={social.userReaction==='dislike'?'reaction-active':''} onClick={()=>reactToVideo('dislike')}><ThumbsUp className="dislike-icon" size={18}/><b>{social.dislikes||0}</b></button><span>{social.comments?.length||0} комментариев</span></div><div className="comments-area"><h3>Комментарии</h3><div className="comment-compose"><input value={commentText} maxLength={1000} onChange={e=>setCommentText(e.target.value)} onKeyDown={e=>e.key==='Enter'&&postComment()} placeholder={user?'Написать комментарий...':'Войди, чтобы комментировать'}/><button onClick={postComment} disabled={!commentText.trim()}>Отправить</button></div><div className="comment-list">{(social.comments||[]).map(c=><article className="comment-item" key={c.id}><div className="comment-avatar">{c.username?.[0]?.toUpperCase()||'M'}</div><div><b>{c.username}</b><p>{c.body}</p></div></article>)}</div></div></div></div></div>}
   <AmbientEffect type={settings.reduceMotion?"none":settings.effect} density={settings.effectDensity} speed={settings.effectSpeed}/>
-  <footer className="mobile-nav">{[['Главная',House],['Shorts',Flame],['Избранное',ThumbsUp],['Плейлисты',Bookmark],['Профиль',UserRound],['Настройки',Settings]].map(([n,I])=><button key={n} className={active===n?'mobile-active':''} onClick={()=>n==='Профиль'?openProfile(user?.id):n==='Настройки'?setSettingsOpen(true):(setActive(n),setCategory('Для вас'),setSelectedPlaylistId(null))}><I size={19}/><span>{n}</span></button>)}</footer>
+  <footer className="mobile-nav">{[['Главная',House],['Shorts',Flame],['В тренде',Flame],['Избранное',ThumbsUp],['Плейлисты',Bookmark],['Профиль',UserRound],['Настройки',Settings]].map(([n,I])=><button key={n} className={active===n?'mobile-active':''} onClick={()=>{if(n==='Профиль')openProfile(user?.id);else navigate(n);setCategory('Для вас');}}><I size={19}/><span>{n}</span></button>)}</footer>
  </div>
 }
 createRoot(document.getElementById('root')).render(<App/>);
