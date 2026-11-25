@@ -501,13 +501,12 @@ body{background:radial-gradient(ellipse at 72% -18%,rgba(104,58,177,.16),transpa
 .search-result-empty{padding:16px;text-align:center;color:var(--muted,#999);font-size:13px}
 
 
-/* Compact, focused sidebar navigation */
-.sidebar{width:198px;padding:16px 11px 14px 12px;}
-.main{width:calc(100% - 198px);}
-.compact-sidebar-nav{display:grid;gap:3px;}
-.compact-sidebar-nav .nav-item{height:38px;padding:0 12px;gap:12px;border-radius:10px;font-size:12px;}
-.compact-sidebar-nav .nav-item svg{width:17px;height:17px;flex:0 0 17px;}
-.sidebar-bottom{margin-top:auto;padding:13px 12px;border-radius:10px;}
-.sidebar-bottom:hover{background:#191a1f;color:#fff;}
-@media(max-width:1200px){.sidebar{width:188px}.main{width:calc(100% - 188px)}}
-@media(max-width:900px){.sidebar{width:188px}.main{width:calc(100% - 188px)}}
+
+/* Mobile navigation: five focused destinations */
+@media(max-width:760px){
+ .mobile-nav{height:calc(68px + env(safe-area-inset-bottom));padding:7px 10px env(safe-area-inset-bottom);display:flex;align-items:center;justify-content:space-between;gap:4px;overflow:visible;}
+ .mobile-nav button{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;gap:4px;font-size:9px;white-space:nowrap;}
+ .mobile-nav button.mobile-create{flex:0 0 48px;width:48px;height:48px;min-width:48px;border-radius:16px;background:#f1f1f2;color:#111216;box-shadow:0 5px 20px #0006;}
+ .mobile-nav button.mobile-create svg{color:#111216;}
+ .main{padding-bottom:105px;}
+}
