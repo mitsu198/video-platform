@@ -162,7 +162,7 @@ app.get('/api/uploads/:id', requireDb, auth, async (req,res) => {
     const ap=await ar.json();
     if(!ar.ok) return res.status(ar.status).json({error:'Не удалось получить видеофайл'});
     const asset=ap.data, playbackId=asset.playback_ids?.[0]?.id||null;
-    await pool.query('UPDATE videos SET asset_id=$1,playback_id=$2,status=$3,duration=$4,is_short=($5::boolean AND COALESCE($4,999999)<=180) WHERE upload_id=$6 AND owner_id=$7',[asset.id,playbackId,asset.status,asset.duration||null,owned.rows[0].is_short,req.params.id,req.user.id]);
+    await pool.query('UPDATE videos SET asset_id=$1,playback_id=$2,status=$3,duration=$4::real,is_short=($5::boolean AND COALESCE($4::real,999999::real)<=180) WHERE upload_id=$6 AND owner_id=$7',[asset.id,playbackId,asset.status,asset.duration||null,owned.rows[0].is_short,req.params.id,req.user.id]);
     res.json({status:asset.status,assetId:asset.id,playbackId,duration:asset.duration||null,isShort:!!owned.rows[0].is_short&&Number(asset.duration||999999)<=180,videoId:owned.rows[0].id});
   } catch(e) { res.status(500).json({error:e.message||'Не удалось проверить загрузку'}); }
 });
