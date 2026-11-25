@@ -523,3 +523,5 @@ body{background:radial-gradient(ellipse at 72% -18%,rgba(104,58,177,.16),transpa
 .profile-video-edit input{width:100%;min-width:0;background:#101116;border:1px solid #454650;border-radius:8px;padding:8px;color:#fff;font-size:10px}
 .profile-video-edit button:disabled{opacity:.45}
 .profile-video-edit .profile-video-cancel{background:transparent;color:#999}
+
+.admin-tabs{display:flex;gap:8px;padding:0 24px 12px;border-bottom:1px solid #30313a}.admin-tabs button{padding:9px 15px;border-radius:10px;background:#25262e;color:#aeb0bb;font-size:12px;font-weight:750}.admin-tabs button.active{background:#7048d8;color:#fff}.admin-report-actions .danger-action{background:#48272c;color:#ffb2b8}@media(max-width:760px){.admin-tabs{padding:0 12px 10px}}
