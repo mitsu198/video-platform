@@ -355,6 +355,22 @@ app.get('/api/admin/videos',requireDb,auth,adminOnly,async(req,res)=>{
  ORDER BY v.created_at DESC LIMIT 300`);
  res.json({videos:r.rows.map(v=>({id:'db-'+v.id,title:v.title,ownerId:String(v.owner_id),ownerName:v.owner_name,isPublic:v.is_public,createdAt:v.created_at,image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=600',streamUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8'}))});
 });
+app.get('/api/admin/users',requireDb,auth,adminOnly,async(req,res)=>{
+  const r=await pool.query(`SELECT u.id,u.email,u.username,u.created_at,
+   (SELECT COUNT(*)::int FROM user_subscriptions s WHERE s.followed_id=u.id) AS followers,
+   (SELECT COUNT(*)::int FROM user_subscriptions s WHERE s.follower_id=u.id) AS following,
+   (SELECT COUNT(*)::int FROM videos v WHERE v.owner_id=u.id) AS videos,
+   (SELECT COUNT(*)::int FROM videos v WHERE v.owner_id=u.id AND v.is_public=TRUE AND v.status='ready') AS public_videos
+   FROM users u ORDER BY u.created_at DESC,u.id DESC`);
+  res.json({users:r.rows.map(u=>({...u,id:String(u.id),isAdmin:isAdminEmail(u.email)})),total:r.rowCount});
+});
+app.get('/api/subscriptions/videos',requireDb,auth,async(req,res)=>{
+  const r=await pool.query(`SELECT v.id,v.owner_id,v.title,v.playback_id,v.duration,v.created_at,v.cover,u.username
+   FROM user_subscriptions s JOIN videos v ON v.owner_id=s.followed_id JOIN users u ON u.id=v.owner_id
+   WHERE s.follower_id=$1 AND v.is_public=TRUE AND v.status='ready' AND v.playback_id IS NOT NULL
+   ORDER BY v.created_at DESC LIMIT 100`,[req.user.id]);
+  res.json({videos:r.rows.map(v=>({id:'db-'+v.id,ownerId:String(v.owner_id),title:v.title,channel:v.username,views:'Видео канала',time:new Date(v.created_at).toLocaleDateString('ru-RU'),duration:v.duration?new Date(v.duration*1000).toISOString().slice(14,19):'',image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',avatar:(v.username||'M').slice(0,1).toUpperCase(),videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8',isPublic:true}))});
+});
 app.delete('/api/admin/videos/:id',requireDb,auth,adminOnly,async(req,res)=>{
  const id=numericVideoId(req.params.id);if(!id)return res.status(400).json({error:'Некорректное видео'});
  const r=await pool.query('SELECT id,asset_id FROM videos WHERE id=$1',[id]);if(!r.rowCount)return res.status(404).json({error:'Видео не найдено'});
