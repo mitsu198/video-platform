@@ -722,3 +722,58 @@ body{background:radial-gradient(ellipse at 72% -18%,rgba(104,58,177,.16),transpa
 
 
 .brand-logo{display:block;object-fit:contain;width:36px;height:36px;flex:0 0 36px;background:transparent;border:0;box-shadow:none;padding:0}
+
+
+/* Smooth Shorts comments sheet motion */
+.shorts-comments-scrim{
+ animation:mirvex-comments-scrim-in .28s ease both;
+}
+.shorts-comments-scrim.is-closing{
+ animation:mirvex-comments-scrim-out .28s ease both;
+}
+.shorts-comments-sheet{
+ animation:mirvex-comments-sheet-in .38s cubic-bezier(.22,.85,.25,1) both;
+ will-change:transform;
+}
+.shorts-comments-sheet.is-closing{
+ animation:mirvex-comments-sheet-out .32s cubic-bezier(.55,.05,.75,.35) both;
+ pointer-events:none;
+}
+@keyframes mirvex-comments-scrim-in{
+ from{opacity:0}
+ to{opacity:1}
+}
+@keyframes mirvex-comments-scrim-out{
+ from{opacity:1}
+ to{opacity:0}
+}
+@keyframes mirvex-comments-sheet-in{
+ from{transform:translateX(-50%) translateY(105%)}
+ to{transform:translateX(-50%) translateY(0)}
+}
+@keyframes mirvex-comments-sheet-out{
+ from{transform:translateX(-50%) translateY(0)}
+ to{transform:translateX(-50%) translateY(105%)}
+}
+@media(max-width:600px){
+ .shorts-comments-sheet{
+  animation-name:mirvex-comments-sheet-in-mobile;
+ }
+ .shorts-comments-sheet.is-closing{
+  animation-name:mirvex-comments-sheet-out-mobile;
+ }
+ @keyframes mirvex-comments-sheet-in-mobile{
+  from{transform:translateY(105%)}
+  to{transform:translateY(0)}
+ }
+ @keyframes mirvex-comments-sheet-out-mobile{
+  from{transform:translateY(0)}
+  to{transform:translateY(105%)}
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .shorts-comments-scrim,.shorts-comments-sheet,
+ .shorts-comments-scrim.is-closing,.shorts-comments-sheet.is-closing{
+  animation-duration:.01ms!important;
+ }
+}
