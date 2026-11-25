@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import mux from 'mux-embed';
 import Hls from 'hls.js';
 import { createRoot } from 'react-dom/client';
-import { Search, House, Compass, PlaySquare, Clock3, ThumbsUp, Flame, Clapperboard, Menu, Plus, Bell, Mic, MoreHorizontal, Play, X, ChevronDown, Film, Radio, UserRound, Settings, History, Bookmark, ArrowUpRight, Flag, ShieldCheck, Trash2, ExternalLink, Maximize, Eye, Heart, MessageCircle, Users, CheckCheck } from 'lucide-react';
+import { Search, House, Compass, PlaySquare, Clock3, ThumbsUp, Flame, Clapperboard, Menu, Plus, Bell, Mic, MoreHorizontal, Play, X, ChevronDown, Film, Radio, UserRound, Settings, History, Bookmark, ArrowUpRight, Flag, ShieldCheck, Trash2, ExternalLink, Maximize, Eye, Heart, MessageCircle, Users, CheckCheck, Volume2, VolumeX } from 'lucide-react';
 import './styles.css';
 
 const videos = [];
@@ -246,13 +246,13 @@ function NotificationPanel({token,onClose,onUnread}){
 }
 
 
-function ShortsVideo({src,active}) {
+function ShortsVideo({src,active,muted}) {
  const videoRef=useRef(null),hlsRef=useRef(null);
  const [playing,setPlaying]=useState(false);
  useEffect(()=>{
   const video=videoRef.current;if(!video||!src)return;
   let hls;
-  video.muted=true;video.loop=true;video.playsInline=true;
+  video.muted=muted;video.loop=true;video.playsInline=true;
   if(src.includes('.m3u8')&&!video.canPlayType('application/vnd.apple.mpegurl')&&Hls.isSupported()){
    hls=new Hls({enableWorker:true,capLevelToPlayerSize:true});hlsRef.current=hls;hls.loadSource(src);hls.attachMedia(video);
   }else video.src=src;
@@ -262,21 +262,23 @@ function ShortsVideo({src,active}) {
   if(!hls)play();
   return()=>{video.pause();video.removeAttribute('src');video.load();hls?.destroy();hlsRef.current=null;};
  },[src,active]);
+ useEffect(()=>{const video=videoRef.current;if(video)video.muted=muted;},[muted]);
  const toggle=()=>{const v=videoRef.current;if(!v)return;if(v.paused)v.play().catch(()=>{});else v.pause();};
- return <video ref={videoRef} className="short-video" playsInline muted loop preload={active?'auto':'none'} onClick={toggle} aria-label={playing?'Пауза видео':'Воспроизвести видео'}/>;
+ return <video ref={videoRef} className="short-video" playsInline muted={muted} loop preload={active?'auto':'none'} onClick={toggle} aria-label={playing?'Пауза видео':'Воспроизвести видео'}/>;
 }
 function ShortsFeed({items,onOpen,onProfile,onLike}) {
- const [activeIndex,setActiveIndex]=useState(0);
+ const [activeIndex,setActiveIndex]=useState(0),[muted,setMuted]=useState(true);
  const feedRef=useRef(null);
  const onScroll=()=>{const el=feedRef.current;if(el)setActiveIndex(Math.max(0,Math.min(items.length-1,Math.round(el.scrollTop/Math.max(1,el.clientHeight)))));};
  if(!items.length)return <div className="shorts-empty"><div className="shorts-empty-icon"><PlaySquare size={30}/></div><h2>Пока нет Shorts</h2><p>Загрузи вертикальное видео до 3 минут и опубликуй его для всех — оно появится здесь.</p></div>;
  return <div className="shorts-feed" ref={feedRef} onScroll={onScroll}>
   {items.map((v,i)=><article className="shorts-slide" key={v.id}>
-   <ShortsVideo src={v.videoUrl} active={i===activeIndex}/>
+   <ShortsVideo src={v.videoUrl} active={i===activeIndex} muted={muted}/>
    <div className="shorts-shade"/>
    <div className="shorts-topline"><span className="shorts-brand-mark">M</span><b>MIRVEX <i>SHORTS</i></b><span className="shorts-counter">{i+1} / {items.length}</span></div>
    <div className="shorts-caption"><button className="shorts-author" onClick={()=>onProfile(v.ownerId)}><span>{v.avatar}</span>@{v.channel}</button><h2>{v.title}</h2><p>{v.views.toLocaleString('ru-RU')} просмотров</p></div>
    <div className="shorts-actions">
+     <button className="shorts-sound-button" onClick={()=>{const nextMuted=!muted;const video=feedRef.current?.querySelectorAll('video.short-video')[i];if(video){video.muted=nextMuted;if(!nextMuted)video.play().catch(()=>{});}setMuted(nextMuted);}} aria-label={muted?'Включить звук':'Выключить звук'} title={muted?'Включить звук':'Выключить звук'}>{muted?<VolumeX size={23}/>:<Volume2 size={23}/>}<b>{muted?'Звук выкл.':'Звук вкл.'}</b></button>
     <button onClick={()=>onLike(v)} aria-label="Поставить лайк"><Heart size={23}/><b>{Number(v.likes||0).toLocaleString('ru-RU')}</b></button>
     <button onClick={()=>onOpen(v)} aria-label="Комментарии"><MessageCircle size={23}/><b>Обсудить</b></button>
     <button onClick={()=>onProfile(v.ownerId)} aria-label="Открыть автора"><UserRound size={22}/><b>Автор</b></button>
