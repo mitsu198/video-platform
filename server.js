@@ -348,6 +348,13 @@ app.post('/api/admin/reports/:id/status',requireDb,auth,adminOnly,async(req,res)
  const r=await pool.query('UPDATE video_reports SET status=$1,reviewed_at=NOW() WHERE id=$2 RETURNING id,status',[status,req.params.id]);
  if(!r.rowCount)return res.status(404).json({error:'Жалоба не найдена'});res.json({ok:true,report:r.rows[0]});
 });
+app.get('/api/admin/videos',requireDb,auth,adminOnly,async(req,res)=>{
+ const r=await pool.query(`SELECT v.id,v.title,v.playback_id,v.created_at,v.owner_id,v.is_public,v.cover,u.username AS owner_name
+ FROM videos v JOIN users u ON u.id=v.owner_id
+ WHERE v.status='ready' AND v.playback_id IS NOT NULL
+ ORDER BY v.created_at DESC LIMIT 300`);
+ res.json({videos:r.rows.map(v=>({id:'db-'+v.id,title:v.title,ownerId:String(v.owner_id),ownerName:v.owner_name,isPublic:v.is_public,createdAt:v.created_at,image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=600',streamUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8'}))});
+});
 app.delete('/api/admin/videos/:id',requireDb,auth,adminOnly,async(req,res)=>{
  const id=numericVideoId(req.params.id);if(!id)return res.status(400).json({error:'Некорректное видео'});
  const r=await pool.query('SELECT id,asset_id FROM videos WHERE id=$1',[id]);if(!r.rowCount)return res.status(404).json({error:'Видео не найдено'});
