@@ -49,6 +49,8 @@ async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     ALTER TABLE videos ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE videos ADD COLUMN IF NOT EXISTS is_short BOOLEAN NOT NULL DEFAULT FALSE;
+    CREATE INDEX IF NOT EXISTS videos_shorts_idx ON videos(is_short,is_public,status,created_at DESC);
     CREATE TABLE IF NOT EXISTS video_reactions (video_id BIGINT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,reaction TEXT NOT NULL CHECK(reaction IN ('like','dislike')),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(video_id,user_id));
     CREATE TABLE IF NOT EXISTS video_comments (id BIGSERIAL PRIMARY KEY,video_id BIGINT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,body TEXT NOT NULL CHECK(char_length(body) BETWEEN 1 AND 1000),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
     CREATE INDEX IF NOT EXISTS video_comments_video_created_idx ON video_comments(video_id,created_at DESC);
@@ -136,19 +138,20 @@ app.get('/api/auth/me', requireDb, auth, async (req,res) => {
 app.post('/api/uploads', requireDb, auth, async (req,res) => {
   try {
     const title=String(req.body?.title||'Новое видео').trim().slice(0,120);
+    const isShort=req.body?.isShort===true;
     const response=await fetch('https://api.mux.com/video/v1/uploads',{method:'POST',headers:{Authorization:muxAuth(),'Content-Type':'application/json'},body:JSON.stringify({
       cors_origin:FRONTEND_ORIGIN,
       new_asset_settings:{playback_policies:['public'],video_quality:'basic',meta:{title}}
     })});
     const payload=await response.json();
     if(!response.ok) return res.status(response.status).json({error:payload?.error?.messages?.join(', ')||payload?.message||'Mux upload creation failed'});
-    await pool.query('INSERT INTO videos(owner_id,upload_id,title,status) VALUES($1,$2,$3,$4)',[req.user.id,payload.data.id,title,'processing']);
+    await pool.query('INSERT INTO videos(owner_id,upload_id,title,status,is_short) VALUES($1,$2,$3,$4,$5)',[req.user.id,payload.data.id,title,'processing',isShort]);
     res.json({uploadId:payload.data.id,uploadUrl:payload.data.url,status:payload.data.status});
   } catch(e) { res.status(500).json({error:e.message||'Не удалось создать загрузку'}); }
 });
 app.get('/api/uploads/:id', requireDb, auth, async (req,res) => {
   try {
-    const owned=await pool.query('SELECT id FROM videos WHERE upload_id=$1 AND owner_id=$2',[req.params.id,req.user.id]);
+    const owned=await pool.query('SELECT id,is_short FROM videos WHERE upload_id=$1 AND owner_id=$2',[req.params.id,req.user.id]);
     if(!owned.rowCount) return res.status(404).json({error:'Загрузка не найдена'});
     const response=await fetch('https://api.mux.com/video/v1/uploads/'+encodeURIComponent(req.params.id),{headers:{Authorization:muxAuth()}});
     const payload=await response.json();
@@ -159,8 +162,8 @@ app.get('/api/uploads/:id', requireDb, auth, async (req,res) => {
     const ap=await ar.json();
     if(!ar.ok) return res.status(ar.status).json({error:'Не удалось получить видеофайл'});
     const asset=ap.data, playbackId=asset.playback_ids?.[0]?.id||null;
-    await pool.query('UPDATE videos SET asset_id=$1,playback_id=$2,status=$3,duration=$4 WHERE upload_id=$5 AND owner_id=$6',[asset.id,playbackId,asset.status,asset.duration||null,req.params.id,req.user.id]);
-    res.json({status:asset.status,assetId:asset.id,playbackId,duration:asset.duration||null,videoId:owned.rows[0].id});
+    await pool.query('UPDATE videos SET asset_id=$1,playback_id=$2,status=$3,duration=$4,is_short=($5::boolean AND COALESCE($4,999999)<=180) WHERE upload_id=$6 AND owner_id=$7',[asset.id,playbackId,asset.status,asset.duration||null,owned.rows[0].is_short,req.params.id,req.user.id]);
+    res.json({status:asset.status,assetId:asset.id,playbackId,duration:asset.duration||null,isShort:!!owned.rows[0].is_short&&Number(asset.duration||999999)<=180,videoId:owned.rows[0].id});
   } catch(e) { res.status(500).json({error:e.message||'Не удалось проверить загрузку'}); }
 });
 app.post('/api/videos/:id/cover', requireDb, auth, uploadImage.single('cover'), async (req,res) => {
@@ -307,6 +310,20 @@ app.post('/api/videos/:id/view',requireDb,auth,async(req,res)=>{
  const count=await pool.query('SELECT COUNT(*)::int AS views FROM video_views WHERE video_id=$1',[id]);
  res.json({views:count.rows[0].views});
 });
+app.get('/api/shorts',requireDb,async(_req,res)=>{
+ const r=await pool.query(`SELECT v.id,v.owner_id,v.title,v.playback_id,v.duration,v.created_at,v.cover,u.username,
+  (SELECT COUNT(*)::int FROM video_reactions vr WHERE vr.video_id=v.id AND vr.reaction='like') AS likes,
+  (SELECT COUNT(*)::int FROM video_views vv WHERE vv.video_id=v.id) AS views
+  FROM videos v JOIN users u ON u.id=v.owner_id
+  WHERE v.is_short=TRUE AND v.is_public=TRUE AND v.status='ready' AND v.playback_id IS NOT NULL
+  ORDER BY v.created_at DESC LIMIT 100`);
+ res.json({videos:r.rows.map(v=>({id:'db-'+v.id,ownerId:String(v.owner_id),title:v.title,channel:v.username,
+  views:Number(v.views||0),likes:Number(v.likes||0),time:new Date(v.created_at).toLocaleDateString('ru-RU'),
+  duration:v.duration||0,image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=720',
+  avatar:(v.username||'M').slice(0,1).toUpperCase(),videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8',isPublic:true,isShort:true
+ }))});
+});
+
 app.get('/api/trending/videos',requireDb,async(_req,res)=>{
  const r=await pool.query(`SELECT v.id,v.owner_id,v.title,v.playback_id,v.duration,v.created_at,v.cover,u.username,
   COUNT(DISTINCT vv.id) FILTER(WHERE vv.created_at>NOW()-INTERVAL '7 days')::int AS views,
