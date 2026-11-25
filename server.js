@@ -222,7 +222,7 @@ app.put('/api/videos/:id/title',requireDb,auth,async(req,res)=>{
  const id=numericVideoId(req.params.id),title=String(req.body?.title||'').trim();
  if(!id)return res.status(400).json({error:'Некорректное видео'});
  if(!title||title.length>120)return res.status(400).json({error:'Название должно содержать от 1 до 120 символов'});
- const r=await pool.query('UPDATE videos SET title=$1 WHERE id=$2 AND owner_id=$3 AND status=\\'ready\\' RETURNING id,title,is_public',[title,id,req.user.id]);
+ const r=await pool.query('UPDATE videos SET title=$1 WHERE id=$2 AND owner_id=$3 AND status=\'ready\' RETURNING id,title,is_public',[title,id,req.user.id]);
  if(!r.rowCount)return res.status(404).json({error:'Видео не найдено'});
  res.json({ok:true,video:{id:'db-'+r.rows[0].id,title:r.rows[0].title,isPublic:r.rows[0].is_public}});
 });
@@ -261,11 +261,11 @@ app.post('/api/videos/:id/reaction',requireDb,auth,async(req,res)=>{const id=num
 app.post('/api/videos/:id/comments',requireDb,auth,async(req,res)=>{const id=numericVideoId(req.params.id),body=String(req.body?.body||'').trim();if(!id||!body||body.length>1000)return res.status(400).json({error:'Комментарий должен содержать от 1 до 1000 символов'});const v=await pool.query("SELECT id FROM videos WHERE id=$1 AND status='ready' AND (is_public=TRUE OR owner_id=$2)",[id,req.user.id]);if(!v.rowCount)return res.status(404).json({error:'Видео не найдено'});const r=await pool.query('INSERT INTO video_comments(video_id,user_id,body) VALUES($1,$2,$3) RETURNING id,body,created_at',[id,req.user.id,body]);const owner=await pool.query('SELECT owner_id,title FROM videos WHERE id=$1',[id]);if(owner.rowCount&&String(owner.rows[0].owner_id)!==String(req.user.id))await pool.query("INSERT INTO notifications(user_id,actor_id,actor_name,kind,video_id,video_title) VALUES($1,$2,$3,'comment',$4,$5)",[owner.rows[0].owner_id,req.user.id,req.user.username,id,owner.rows[0].title]);res.status(201).json({comment:{...r.rows[0],username:req.user.username,userId:String(req.user.id)}});});
 app.get('/api/users/:id/profile',requireDb,async(req,res)=>{
  const id=String(req.params.id);
- if(!/^\\d+$/.test(id))return res.status(400).json({error:'Некорректный профиль'});
+ if(!/^\d+$/.test(id))return res.status(400).json({error:'Некорректный профиль'});
  const u=await pool.query('SELECT id,username,created_at FROM users WHERE id=$1',[id]);
  if(!u.rowCount)return res.status(404).json({error:'Профиль не найден'});
  let viewerId=null;
- try{const t=(req.headers.authorization||'').replace(/^Bearer\\s+/i,'');if(t)viewerId=String(jwt.verify(t,JWT_SECRET).id);}catch{}
+ try{const t=(req.headers.authorization||'').replace(/^Bearer\s+/i,'');if(t)viewerId=String(jwt.verify(t,JWT_SECRET).id);}catch{}
  const [stats,vids]=await Promise.all([
   pool.query("SELECT (SELECT COUNT(*) FROM user_subscriptions WHERE followed_id=$1)::int AS followers,(SELECT COUNT(*) FROM user_subscriptions WHERE follower_id=$1)::int AS following,(SELECT COUNT(*) FROM video_reactions r JOIN videos v ON v.id=r.video_id WHERE v.owner_id=$1 AND r.reaction='like')::int AS likes,(SELECT COUNT(*) FROM videos WHERE owner_id=$1 AND is_public=TRUE AND status='ready')::int AS videos",[id]),
   pool.query("SELECT id,title,playback_id,duration,created_at,cover,is_public FROM videos WHERE owner_id=$1 AND status='ready' AND (is_public=TRUE OR $2::text=$1::text) ORDER BY created_at DESC LIMIT 30",[id,viewerId])
