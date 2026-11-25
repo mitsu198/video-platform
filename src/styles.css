@@ -656,3 +656,38 @@ body{background:radial-gradient(ellipse at 72% -18%,rgba(104,58,177,.16),transpa
  .rule-card{gap:11px;padding:15px 0}
  .rule-card p,.rules-warning p{font-size:11px}
 }
+
+
+/* MIRVEX Shorts — subtle premium polish */
+.shorts-page{gap:20px}
+.shorts-page-heading{max-width:1120px;width:100%;margin:0 auto;padding:12px 8px 2px}
+.shorts-page-heading h1{font-weight:780;letter-spacing:-2px;text-shadow:0 8px 30px rgba(145,105,255,.12)}
+.shorts-page-heading p{letter-spacing:.1px}
+.shorts-upload-button{border-radius:14px;background:linear-gradient(135deg,rgba(155,119,255,.2),rgba(111,75,210,.1));border-color:rgba(177,148,255,.28);box-shadow:0 8px 24px rgba(94,61,180,.12);transition:transform .2s ease,border-color .2s ease,background .2s ease}
+.shorts-upload-button:hover{transform:translateY(-1px);border-color:rgba(190,165,255,.55);background:rgba(143,105,255,.22)}
+.shorts-feed{border:1px solid rgba(255,255,255,.1);box-shadow:0 28px 80px rgba(0,0,0,.42),0 0 0 1px rgba(164,130,255,.045);background:#08080c}
+.shorts-slide:after{content:"";position:absolute;inset:0;pointer-events:none;border:1px solid rgba(255,255,255,.055);border-radius:inherit}
+.shorts-topline{top:16px;left:17px;right:17px}
+.shorts-brand-mark{box-shadow:0 5px 18px rgba(120,78,230,.38);border:1px solid rgba(255,255,255,.24)}
+.shorts-caption{left:18px;bottom:20px;padding:13px 15px;max-width:calc(100% - 94px);border:1px solid rgba(255,255,255,.13);border-radius:16px;background:linear-gradient(135deg,rgba(15,15,22,.48),rgba(15,15,22,.18));backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);text-shadow:0 2px 10px rgba(0,0,0,.55)}
+.shorts-caption h2{margin-top:8px;font-size:16px;line-height:1.35}
+.shorts-caption p{font-size:11px}
+.shorts-author{font-size:12px}
+.shorts-actions{right:12px;bottom:20px;gap:12px}
+.shorts-actions button{width:50px;min-height:54px;padding:8px 3px;border:1px solid transparent;border-radius:16px;background:rgba(12,12,18,.2);backdrop-filter:blur(5px);transition:background .18s ease,transform .18s ease}
+.shorts-actions button:hover{background:rgba(125,91,220,.22);transform:translateY(-2px)}
+.shorts-actions button svg{filter:drop-shadow(0 2px 7px rgba(0,0,0,.85))}
+.shorts-actions button b{font-size:10px;line-height:1.2;text-align:center}
+.shorts-actions .shorts-sound-button{border:1px solid rgba(255,255,255,.13);background:rgba(12,12,18,.42)}
+.shorts-actions .shorts-comment-active{background:rgba(145,105,255,.25);border-color:rgba(195,170,255,.25)}
+.shorts-comments-sheet{border:1px solid rgba(255,255,255,.1);box-shadow:0 -18px 65px rgba(0,0,0,.4)}
+.shorts-comment-compose{background:rgba(28,28,36,.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+@media(max-width:700px){
+ .shorts-page-heading{padding:12px 16px 0}
+ .shorts-feed{border:0;box-shadow:0 18px 50px rgba(0,0,0,.32)}
+ .shorts-caption{left:13px;bottom:14px;padding:10px 12px;max-width:calc(100% - 78px);border-radius:14px}
+ .shorts-caption h2{font-size:15px;margin:6px 0}
+ .shorts-actions{right:7px;bottom:13px;gap:9px}
+ .shorts-actions button{width:46px;min-height:49px;padding:6px 2px;border-radius:14px}
+}
+@media(prefers-reduced-motion:reduce){.shorts-upload-button,.shorts-actions button{transition:none}}
