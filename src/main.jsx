@@ -322,7 +322,7 @@ function App(){
  useEffect(()=>{if(token&&['Избранное','Плейлисты'].includes(active))loadLibrary(token);},[active,token]);
  useEffect(()=>{
   if(active!=='Профиль')return;
-  const id=route.profileId||user?.id;if(!id){setProfile(null);setAuthOpen(true);return;}
+  const id=route.profileId||user?.id;if(!id){if(token)return;setProfile(null);setAuthOpen(true);return;}
   let live=true;
   fetch('https://mirvex-api.onrender.com/api/users/'+id+'/profile',{headers:token?{Authorization:'Bearer '+token}:{}})
    .then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось открыть профиль');return d;})
