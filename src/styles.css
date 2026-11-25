@@ -288,6 +288,7 @@ button:active:not(:disabled) { transform:scale(.975); }
 .shorts-actions{position:absolute;right:13px;bottom:22px;display:flex;flex-direction:column;gap:16px;align-items:center}
 .shorts-actions button{display:flex;flex-direction:column;align-items:center;gap:4px;width:54px;padding:7px 2px;border:0;background:transparent;color:#fff;cursor:pointer;text-shadow:0 2px 8px #000}
 .shorts-actions button svg{filter:drop-shadow(0 2px 5px rgba(0,0,0,.7))}.shorts-actions button b{font-size:10px;font-weight:650}
+.shorts-actions .shorts-sound-button{border-radius:12px;background:rgba(0,0,0,.26);padding:9px 2px;backdrop-filter:blur(8px)}.shorts-actions .shorts-sound-button svg{filter:drop-shadow(0 2px 5px #000)}
 .shorts-empty{width:min(100%,540px);margin:42px auto;padding:52px 26px;text-align:center;border:1px solid var(--border,rgba(255,255,255,.09));border-radius:22px;background:rgba(255,255,255,.025)}
 .shorts-empty-icon{display:grid;place-items:center;width:58px;height:58px;margin:0 auto 17px;border-radius:18px;background:rgba(145,110,255,.15);color:#b99cff}
 .shorts-empty h2{margin:0 0 8px;font-size:20px}.shorts-empty p{max-width:370px;margin:0 auto;color:var(--text-muted,#999);font-size:13px;line-height:1.6}
