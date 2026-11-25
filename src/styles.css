@@ -315,3 +315,10 @@ button:active:not(:disabled) { transform:scale(.975); }
  .mobile-nav button{flex:1 0 52px;min-width:52px;font-size:8px}
  .main{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 }
+
+
+/* MIRVEX — horizontal route entrance. Navigation tab animations remain untouched. */
+.main.page-transition{animation:mirvex-route-slide-in 420ms cubic-bezier(.22,.72,.22,1) both;will-change:transform,opacity}
+@keyframes mirvex-route-slide-in{from{opacity:0;transform:translate3d(-24px,0,0)}to{opacity:1;transform:translate3d(0,0,0)}}
+@media(prefers-reduced-motion:reduce){.main.page-transition{animation:none;will-change:auto}}
+.reduce-motion .main.page-transition{animation:none;will-change:auto}
