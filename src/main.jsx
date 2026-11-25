@@ -63,6 +63,7 @@ function UploadDialog({ onClose, onUploaded, token }) {
  const [file,setFile]=useState(null);
  const [cover,setCover]=useState(null);
  const [title,setTitle]=useState('');
+ const [isShort,setIsShort]=useState(false);
  const [status,setStatus]=useState('idle');
  const [progress,setProgress]=useState(0);
  const [message,setMessage]=useState('');
@@ -72,7 +73,7 @@ function UploadDialog({ onClose, onUploaded, token }) {
   if (!file) return;
   setStatus('uploading'); setProgress(0); setMessage('Создаём защищённую ссылку...');
   try {
-   const created=await fetch('https://mirvex-api.onrender.com/api/uploads',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({title:title||file.name})});
+   const created=await fetch('https://mirvex-api.onrender.com/api/uploads',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({title:title||file.name,isShort})});
    const data=await created.json();
    if(!created.ok) throw new Error(data.error||'Не удалось создать загрузку');
    setMessage('Загружаем видео в Mux...');
@@ -96,7 +97,7 @@ function UploadDialog({ onClose, onUploaded, token }) {
    }
    if(!ready) throw new Error('Обработка занимает больше обычного. Попробуйте проверить позже.');
    if(cover){const fd=new FormData();fd.append('cover',cover);const cr=await fetch('https://mirvex-api.onrender.com/api/videos/'+ready.videoId+'/cover',{method:'POST',headers:{Authorization:'Bearer '+token},body:fd});const cd=await cr.json();if(!cr.ok)throw new Error(cd.error||'Не удалось сохранить обложку');}
-   const item={id:'db-'+ready.videoId,title:title||file.name,channel:'Мой канал',views:'Новое видео',time:'Только что',duration:'',image:cover?URL.createObjectURL(cover):'https://image.mux.com/'+ready.playbackId+'/thumbnail.jpg?width=900',avatar:'М',category:'Мои видео',videoUrl:'https://stream.mux.com/'+ready.playbackId+'.m3u8'};
+   const item={id:'db-'+ready.videoId,title:title||file.name,channel:'Мой канал',views:'Новое видео',time:'Только что',duration:ready.duration?new Date(ready.duration*1000).toISOString().slice(14,19):'',image:cover?URL.createObjectURL(cover):'https://image.mux.com/'+ready.playbackId+'/thumbnail.jpg?width=900',avatar:'М',category:'Мои видео',videoUrl:'https://stream.mux.com/'+ready.playbackId+'.m3u8',isShort:!!ready.isShort};
    onUploaded(item);
    setStatus('done'); setMessage('Видео опубликовано и готово к просмотру!');
   } catch(e){setStatus('error');setMessage(e.message||'Не удалось загрузить видео');}
@@ -104,6 +105,7 @@ function UploadDialog({ onClose, onUploaded, token }) {
  return <div className="upload-backdrop" onClick={onClose}><div className="upload-dialog" onClick={e=>e.stopPropagation()}>
   <button className="modal-close" onClick={onClose}><X/></button><div className="eyebrow">MIRVEX STUDIO</div><h2>Загрузить видео</h2><p className="upload-hint">Выбери видео с устройства. Файл отправится напрямую в Mux.</p>
   <label className="upload-field">Название видео<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Например, мой первый ролик"/></label>
+  <label className="upload-short-toggle"><input type="checkbox" checked={isShort} onChange={e=>setIsShort(e.target.checked)}/><span><b>Опубликовать как MIRVEX Short</b><small>Вертикальный ролик до 3 минут. После загрузки его можно опубликовать для всех.</small></span></label>
   <input ref={chooseRef} type="file" accept="video/*" hidden onChange={e=>setFile(e.target.files?.[0]||null)}/>
   <button className="file-picker" onClick={()=>chooseRef.current?.click()} disabled={status==='uploading'}><Film size={20}/><span>{file?file.name:'Выбрать видеофайл'}</span><small>{file?(file.size/1024/1024).toFixed(1)+' МБ':'MP4, MOV и другие форматы'}</small></button>
   <input ref={coverRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e=>setCover(e.target.files?.[0]||null)}/>
@@ -243,6 +245,47 @@ function NotificationPanel({token,onClose,onUnread}){
  return <><button className="notification-dismiss" aria-label="Закрыть уведомления" onClick={onClose}/><section className="notification-panel"><header><div><b>Уведомления</b><small>Активность твоего канала</small></div><button onClick={markRead}><CheckCheck size={15}/> Прочитать всё</button><button className="notification-x" onClick={onClose}><X size={17}/></button></header><div className="notification-list">{loading?<p>Загружаем…</p>:error?<p className="studio-note">{error}</p>:items.length?items.map(n=><article className={!n.read_at?'unread':''} key={n.id}><span className="notification-icon">{n.kind==='subscriber'?<Users size={17}/>:n.kind==='like'?<Heart size={17}/>:<MessageCircle size={17}/>}</span><div><p><b>{n.actor_name}</b> {label(n)}</p>{n.video_title&&<small>{n.video_title}</small>}<time>{new Date(n.created_at).toLocaleString('ru-RU')}</time></div></article>):<p className="studio-note">Пока нет уведомлений. Новые подписки, лайки и комментарии появятся здесь.</p>}</div></section></>;
 }
 
+
+function ShortsVideo({src,active}) {
+ const videoRef=useRef(null),hlsRef=useRef(null);
+ const [playing,setPlaying]=useState(false);
+ useEffect(()=>{
+  const video=videoRef.current;if(!video||!src)return;
+  let hls;
+  video.muted=true;video.loop=true;video.playsInline=true;
+  if(src.includes('.m3u8')&&!video.canPlayType('application/vnd.apple.mpegurl')&&Hls.isSupported()){
+   hls=new Hls({enableWorker:true,capLevelToPlayerSize:true});hlsRef.current=hls;hls.loadSource(src);hls.attachMedia(video);
+  }else video.src=src;
+  const play=()=>{if(active)video.play().then(()=>setPlaying(true)).catch(()=>setPlaying(false));else{video.pause();setPlaying(false);}};
+  video.addEventListener('playing',()=>setPlaying(true));video.addEventListener('pause',()=>setPlaying(false));
+  if(hls)hls.on(Hls.Events.MANIFEST_PARSED,play);else if(video.readyState>=2)play();else video.addEventListener('loadeddata',play,{once:true});
+  if(!hls)play();
+  return()=>{video.pause();video.removeAttribute('src');video.load();hls?.destroy();hlsRef.current=null;};
+ },[src,active]);
+ const toggle=()=>{const v=videoRef.current;if(!v)return;if(v.paused)v.play().catch(()=>{});else v.pause();};
+ return <video ref={videoRef} className="short-video" playsInline muted loop preload={active?'auto':'none'} onClick={toggle} aria-label={playing?'Пауза видео':'Воспроизвести видео'}/>;
+}
+function ShortsFeed({items,onOpen,onProfile,onLike}) {
+ const [activeIndex,setActiveIndex]=useState(0);
+ const feedRef=useRef(null);
+ const onScroll=()=>{const el=feedRef.current;if(el)setActiveIndex(Math.max(0,Math.min(items.length-1,Math.round(el.scrollTop/Math.max(1,el.clientHeight)))));};
+ if(!items.length)return <div className="shorts-empty"><div className="shorts-empty-icon"><PlaySquare size={30}/></div><h2>Пока нет Shorts</h2><p>Загрузи вертикальное видео до 3 минут и опубликуй его для всех — оно появится здесь.</p></div>;
+ return <div className="shorts-feed" ref={feedRef} onScroll={onScroll}>
+  {items.map((v,i)=><article className="shorts-slide" key={v.id}>
+   <ShortsVideo src={v.videoUrl} active={i===activeIndex}/>
+   <div className="shorts-shade"/>
+   <div className="shorts-topline"><span className="shorts-brand-mark">M</span><b>MIRVEX <i>SHORTS</i></b><span className="shorts-counter">{i+1} / {items.length}</span></div>
+   <div className="shorts-caption"><button className="shorts-author" onClick={()=>onProfile(v.ownerId)}><span>{v.avatar}</span>@{v.channel}</button><h2>{v.title}</h2><p>{v.views.toLocaleString('ru-RU')} просмотров</p></div>
+   <div className="shorts-actions">
+    <button onClick={()=>onLike(v)} aria-label="Поставить лайк"><Heart size={23}/><b>{Number(v.likes||0).toLocaleString('ru-RU')}</b></button>
+    <button onClick={()=>onOpen(v)} aria-label="Комментарии"><MessageCircle size={23}/><b>Обсудить</b></button>
+    <button onClick={()=>onProfile(v.ownerId)} aria-label="Открыть автора"><UserRound size={22}/><b>Автор</b></button>
+    <button onClick={async()=>{const url=window.location.origin+'/?video='+encodeURIComponent(v.id);try{if(navigator.share)await navigator.share({title:v.title,url});else if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(url);alert('Ссылка скопирована');}}catch{}}} aria-label="Поделиться"><ArrowUpRight size={22}/><b>Поделиться</b></button>
+   </div>
+  </article>)}
+ </div>;
+}
+
 function App(){
  const [active,setActive]=useState('Главная');
  const [displayedActive,setDisplayedActive]=useState('Главная');
@@ -258,6 +301,7 @@ function App(){
  const [notificationsOpen,setNotificationsOpen]=useState(false);
  const [notificationUnread,setNotificationUnread]=useState(0);
  const [trendingVideos,setTrendingVideos]=useState([]);
+ const [shortVideos,setShortVideos]=useState([]);
  const [profile,setProfile]=useState(null);
  const [social,setSocial]=useState({likes:0,dislikes:0,userReaction:null,comments:[]});
  const [commentText,setCommentText]=useState('');
@@ -278,15 +322,16 @@ function App(){
  useEffect(()=>{localStorage.setItem('mirvex_watch_history',JSON.stringify(watchHistory.slice(0,30)));},[watchHistory]);
  useEffect(()=>{const clear=()=>setWatchHistory([]);window.addEventListener('mirvex:clear-history',clear);return()=>window.removeEventListener('mirvex:clear-history',clear);},[]);
  const loadPublicVideos=async()=>{const r=await fetch('https://mirvex-api.onrender.com/api/public/videos');const d=await r.json();if(r.ok)setPublicVideos(d.videos||[]);};
+ const loadShortVideos=async()=>{try{const r=await fetch('https://mirvex-api.onrender.com/api/shorts');const d=await r.json();if(r.ok)setShortVideos(d.videos||[]);}catch{}};
  const loadVideos=async t=>{const r=await fetch('https://mirvex-api.onrender.com/api/videos',{headers:{Authorization:'Bearer '+t}});const d=await r.json();if(r.ok)setUploaded(d.videos||[]);};
  const loadLibrary=async t=>{try{const h={Authorization:'Bearer '+t};const [f,p]=await Promise.all([fetch('https://mirvex-api.onrender.com/api/library/favorites',{headers:h}),fetch('https://mirvex-api.onrender.com/api/library/playlists',{headers:h})]);const [fd,pd]=await Promise.all([f.json(),p.json()]);if(f.ok){setFavoriteVideos(fd.videos||[]);setFavoriteIds((fd.videos||[]).map(v=>v.id));}if(p.ok)setPlaylists(pd.playlists||[]);}catch{}};
  const createPlaylist=async()=>{if(!user){setAuthOpen(true);return;}const title=playlistName.trim();if(!title)return;try{const r=await fetch('https://mirvex-api.onrender.com/api/library/playlists',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({title})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось создать плейлист');setPlaylists(p=>[d.playlist,...p]);setPlaylistName('');}catch(e){alert(e.message);}};
  const toggleFavorite=async video=>{if(!user){setAuthOpen(true);return;}const next=!favoriteIds.includes(video.id);try{const r=await fetch('https://mirvex-api.onrender.com/api/videos/'+video.id+'/favorite',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({favorite:next})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось обновить избранное');setFavoriteIds(ids=>next?[...ids,video.id]:ids.filter(id=>id!==video.id));await loadLibrary(token);}catch(e){alert(e.message);}};
  const addToPlaylist=async playlistId=>{if(!user){setAuthOpen(true);return;}if(!selected)return;try{const r=await fetch('https://mirvex-api.onrender.com/api/library/playlists/'+playlistId+'/videos',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({videoId:selected.id})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось добавить видео');await loadLibrary(token);alert('Видео добавлено в плейлист');}catch(e){alert(e.message);}};
  const deletePlaylist=async id=>{if(!confirm('Удалить плейлист?'))return;try{const r=await fetch('https://mirvex-api.onrender.com/api/library/playlists/'+id,{method:'DELETE',headers:{Authorization:'Bearer '+token}});if(!r.ok)throw new Error('Не удалось удалить плейлист');setPlaylists(p=>p.filter(x=>x.id!==id));if(selectedPlaylistId===id)setSelectedPlaylistId(null);}catch(e){alert(e.message);}};
- const onAuth=d=>{localStorage.setItem('mirvex_token',d.token);setToken(d.token);setUser(d.user);loadVideos(d.token);loadPublicVideos();loadLibrary(d.token);};
+ const onAuth=d=>{localStorage.setItem('mirvex_token',d.token);setToken(d.token);setUser(d.user);loadVideos(d.token);loadPublicVideos();loadShortVideos();loadLibrary(d.token);};
  const logout=()=>{localStorage.removeItem('mirvex_token');setToken('');setUser(null);setUploaded([]);setFavoriteVideos([]);setFavoriteIds([]);setPlaylists([]);};
- useEffect(()=>{loadPublicVideos();fetch('https://mirvex-api.onrender.com/api/trending/videos').then(r=>r.ok?r.json():Promise.reject()).then(d=>setTrendingVideos(d.videos||[])).catch(()=>{});},[]);
+ useEffect(()=>{loadPublicVideos();loadShortVideos();fetch('https://mirvex-api.onrender.com/api/trending/videos').then(r=>r.ok?r.json():Promise.reject()).then(d=>setTrendingVideos(d.videos||[])).catch(()=>{});},[]);
  useEffect(()=>{const id=new URLSearchParams(window.location.search).get('video');if(id&&publicVideos.length){const v=publicVideos.find(x=>x.id===id);if(v)setSelected(v);}},[publicVideos]);
  useEffect(()=>{
    if(!token)return;
@@ -311,8 +356,8 @@ function App(){
    return()=>{cancelled=true;clearTimeout(timer);window.removeEventListener('online',onOnline);};
   },[token]);
  const removeAdminVideo=id=>{setPublicVideos(items=>items.filter(v=>v.id!==id));setUploaded(items=>items.filter(v=>v.id!==id));if(selected?.id===id)setSelected(null);};
- const addUploaded=item=>{const owned={...item,ownerId:String(user?.id||''),isPublic:false};setUploaded(list=>[owned,...list]);setCategory('Мои видео');setSelected(owned);setUploadOpen(false);loadVideos(token);};
- const togglePublish=async video=>{try{const next=!video.isPublic;const r=await fetch('https://mirvex-api.onrender.com/api/videos/'+video.id.replace('db-','')+'/publish',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({isPublic:next})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось изменить публикацию');setUploaded(items=>items.map(v=>v.id===video.id?{...v,isPublic:next}:v));setSelected(v=>v?.id===video.id?{...v,isPublic:next}:v);await loadPublicVideos();}catch(e){alert(e.message);}};
+ const addUploaded=item=>{const owned={...item,ownerId:String(user?.id||''),isPublic:false};setUploaded(list=>[owned,...list]);setCategory('Мои видео');setSelected(owned);setUploadOpen(false);loadVideos(token);loadShortVideos();};
+ const togglePublish=async video=>{try{const next=!video.isPublic;const r=await fetch('https://mirvex-api.onrender.com/api/videos/'+video.id.replace('db-','')+'/publish',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({isPublic:next})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось изменить публикацию');setUploaded(items=>items.map(v=>v.id===video.id?{...v,isPublic:next}:v));setSelected(v=>v?.id===video.id?{...v,isPublic:next}:v);await loadPublicVideos();await loadShortVideos();}catch(e){alert(e.message);}};
  const [category,setCategory]=useState('Для вас');
  const [query,setQuery]=useState('');
  const [searchOpen,setSearchOpen]=useState(false);
@@ -322,6 +367,7 @@ function App(){
  const loadSocial=async video=>{if(!video?.id)return;try{const r=await fetch('https://mirvex-api.onrender.com/api/videos/'+video.id+'/social',{headers:token?{Authorization:'Bearer '+token}:{}});const d=await r.json();if(r.ok)setSocial(d);}catch{}};
  const openProfile=async id=>{if(!id){if(user)id=user.id;else{setAuthOpen(true);return;}}try{const r=await fetch('https://mirvex-api.onrender.com/api/users/'+id+'/profile',{headers:token?{Authorization:'Bearer '+token}:{}});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось открыть профиль');setProfile({...d,videosList:d.videos||[]});setProfileOpen(true);}catch(e){alert(e.message);}};
  const reactToVideo=async reaction=>{if(!user){setAuthOpen(true);return;}try{const next=social.userReaction===reaction?null:reaction;const r=await fetch('https://mirvex-api.onrender.com/api/videos/'+selected.id+'/reaction',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({reaction:next})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось сохранить реакцию');setSocial(x=>({...x,...d}));}catch(e){alert(e.message);}};
+ const likeShort=async video=>{if(!user){setAuthOpen(true);return;}try{const r=await fetch('https://mirvex-api.onrender.com/api/videos/'+video.id+'/reaction',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({reaction:'like'})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось поставить лайк');setShortVideos(items=>items.map(v=>v.id===video.id?{...v,...d}:v));}catch(e){alert(e.message);}};
  const postComment=async()=>{if(!user){setAuthOpen(true);return;}const body=commentText.trim();if(!body)return;try{const r=await fetch('https://mirvex-api.onrender.com/api/videos/'+selected.id+'/comments',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({body})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось отправить комментарий');setSocial(x=>({...x,comments:[d.comment,...x.comments]}));setCommentText('');}catch(e){alert(e.message);}};
  const subscribe=async subscribed=>{if(!user){setAuthOpen(true);return;}try{const r=await fetch('https://mirvex-api.onrender.com/api/users/'+profile.user.id+'/subscribe',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({subscribed})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось изменить подписку');setProfile(p=>({...p,...d}));}catch(e){alert(e.message);}};
  useEffect(()=>{if(selected)loadSocial(selected);},[selected?.id,token]);
@@ -355,7 +401,7 @@ function App(){
     <button className="sidebar-bottom" onClick={()=>setSettingsOpen(true)}><Settings size={16}/> Настройки</button>
    </aside>}
    <main className={'main page-transition '+(pageLeaving?'page-leaving':'')} key={displayedActive}>
-    {displayedActive==='Студия'?<StudioPage token={token} onLogin={()=>setAuthOpen(true)}/>:displayedActive==='Shorts'?<><div className="page-heading"><div><div className="eyebrow">БЫСТРО И ПО ДЕЛУ</div><h1>Shorts</h1><p>Вертикальные видео, которые затягивают.</p></div></div><div className="shorts-grid">{shorts.map(s=><button className="short-card" key={s.id} onClick={()=>setSelected({title:s.title,channel:'MIRVEX Shorts',views:s.views+' просмотров',time:'Сейчас',duration:'0:32',image:s.image,avatar:'✦'})}><img src={s.image}/><span className="short-play"><Play fill="white"/></span><strong>{s.title}</strong><small>{s.views} просмотров</small></button>)}</div></>:<>
+    {displayedActive==='Студия'?<StudioPage token={token} onLogin={()=>setAuthOpen(true)}/>:displayedActive==='Shorts'?<section className="shorts-page"><div className="shorts-page-heading"><div><div className="eyebrow">MIRVEX · VERTICAL VIDEO</div><h1>Shorts<span>.</span></h1><p>Короткие видео. Большие впечатления.</p></div><button className="shorts-upload-button" onClick={()=>user?setUploadOpen(true):setAuthOpen(true)}><Plus size={17}/> Создать Short</button></div><ShortsFeed items={shortVideos} onOpen={v=>setSelected(v)} onProfile={openProfile} onLike={likeShort}/></section>:<>
     <section className="welcome"><div><div className="eyebrow">ТВОЯ ВИДЕОПЛАТФОРМА</div><h1>{displayedActive==='Главная'?'Смотри новое':displayedActive==='В тренде'?'Популярное сейчас':displayedActive}</h1><p>{displayedActive==='В тренде'?'Самые популярные видео за последние 7 дней.':category==='Мои видео'?'Твоя личная видеотека.':displayedActive==='Главная'?'Персональная подборка на основе твоих просмотров.':'Публичные видео сообщества MIRVEX.'}</p></div><div className="welcome-art"><div className="art-orb orb-one"/><div className="art-orb orb-two"/><div className="art-play"><Play fill="white" size={25}/></div><span className="art-caption">YOUR NEXT<br/>FAVORITE VIDEO</span></div></section>
     {displayedActive==='Главная'&&<div className="category-row">{categories.map(c=><button key={c} onClick={()=>setCategory(c)} className={'category '+(category===c?'selected':'')}>{c}</button>)}</div>}
     {displayedActive==='Главная'&&continueVideos.length>0&&<section className="continue-section"><div className="section-title"><div><h2>Продолжить просмотр</h2><span>Недавно открытые видео</span></div></div><div className="continue-strip">{continueVideos.map(v=><button className="continue-card" key={v.id} onClick={()=>setSelected(v)}><img loading="lazy" src={v.image} alt=""/><span><b>{v.title}</b><small>{v.channel}</small></span></button>)}</div></section>}{displayedActive==='Плейлисты'&&<section className="playlist-panel">
