@@ -156,7 +156,7 @@ function SettingsDialog({settings,onChange,onClose,user,onLogout}) {
  const closeTimer=useRef(null);
  const close=()=>{if(closing)return;setClosing(true);closeTimer.current=setTimeout(onClose,settings.reduceMotion?20:460);};
  useEffect(()=>()=>clearTimeout(closeTimer.current),[]);
- const sections=[['Внешний вид','◐'],['Воспроизведение','▷'],['Аккаунт','○']];
+ const sections=[['Внешний вид','◐'],['Воспроизведение','▷'],['Уведомления','♧'],['Конфиденциальность','◇'],['Аккаунт','○']];
  const update=(key,value)=>onChange({...settings,[key]:value});
  return <div className={'settings-backdrop motion-layer '+(closing?'is-closing':'')} onClick={close}><section className="settings-dialog motion-panel" onClick={e=>e.stopPropagation()}>
   <header className="settings-header"><div><div className="eyebrow">MIRVEX PERSONAL</div><h2>Настройки</h2><p>Настрой платформу под себя.</p></div><button className="settings-close" onClick={close}><X/></button></header>
@@ -178,6 +178,18 @@ function SettingsDialog({settings,onChange,onClose,user,onLogout}) {
     {section==='Воспроизведение'&&<><div className="settings-section-title">Плеер</div>
      <div className="setting-row"><div><b>Автовоспроизведение</b><small>Запускать видео автоматически при открытии</small></div><input type="checkbox" checked={settings.autoplay} onChange={e=>update('autoplay',e.target.checked)}/></div>
      <p className="settings-note">Настройки плеера применяются к просмотру на этом устройстве.</p>
+    </>}
+    {section==='Уведомления'&&<><div className="settings-section-title">Уведомления</div>
+     <div className="setting-row"><div><b>Новые подписчики</b><small>Показывать уведомления о подписках</small></div><input type="checkbox" checked={settings.notifySubscribers!==false} onChange={e=>update('notifySubscribers',e.target.checked)}/></div>
+     <div className="setting-row"><div><b>Активность видео</b><small>Новости о лайках и комментариях</small></div><input type="checkbox" checked={settings.notifyActivity!==false} onChange={e=>update('notifyActivity',e.target.checked)}/></div>
+     <div className="setting-row"><div><b>Рекомендации</b><small>Подборки и новые видео</small></div><input type="checkbox" checked={settings.notifyRecommendations!==false} onChange={e=>update('notifyRecommendations',e.target.checked)}/></div>
+     <p className="settings-note">Настройки сохраняются на этом устройстве. Системная отправка push-уведомлений пока не подключена.</p>
+    </>}
+    {section==='Конфиденциальность'&&<><div className="settings-section-title">Твоя приватность</div>
+     <div className="setting-row"><div><b>Показывать историю просмотров</b><small>Сохранять недавно просмотренные видео</small></div><input type="checkbox" checked={settings.saveHistory!==false} onChange={e=>update('saveHistory',e.target.checked)}/></div>
+     <div className="setting-row"><div><b>Персональные рекомендации</b><small>Учитывать историю для подбора видео</small></div><input type="checkbox" checked={settings.personalRecommendations!==false} onChange={e=>update('personalRecommendations',e.target.checked)}/></div>
+     <button className="settings-logout privacy-clear" onClick={()=>{if(confirm('Очистить историю просмотров на этом устройстве?')){localStorage.removeItem('mirvex_watch_history');window.dispatchEvent(new Event('mirvex:clear-history'));}}}>Очистить историю просмотров</button>
+     <p className="settings-note">Публичные видео и профиль управляются отдельно от этих параметров.</p>
     </>}
     {section==='Аккаунт'&&<><div className="settings-section-title">Твой аккаунт</div>
      <div className="account-settings-card"><div className="account-settings-avatar">{(user?.username?.[0]||'M').toUpperCase()}</div><div><b>{user?.username||'Гость'}</b><small>{user?.email||'Войди, чтобы синхронизировать библиотеку'}</small></div></div>
