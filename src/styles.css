@@ -213,3 +213,17 @@ button:active:not(:disabled) { transform:scale(.975); }
 .video-card:hover .thumb img{transform:scale(1.045);filter:brightness(1.08)}
 @media(max-width:760px){.player-control-row{gap:3px}.player-control-group{gap:3px}.player-control-group>button,.player-menu-wrap>button{min-width:27px;height:28px}.player-volume{width:48px}.player-controls{padding:28px 8px 7px}.player-seek{gap:6px;font-size:9px}.continue-card{min-width:220px}.player-big-play{width:52px;height:52px}}
 @media(prefers-reduced-motion:reduce){.mirvex-player *,.continue-card,.video-card .thumb img{transition:none!important;animation:none!important}}
+
+
+/* Settings expansion — responsive premium controls */
+.settings-tabs{flex-wrap:wrap;gap:7px}
+.settings-tabs button{transition:background .22s ease,border-color .22s ease,transform .22s ease}
+.settings-tabs button:hover{transform:translateY(-1px)}
+.settings-content .setting-row{animation:settingsRowIn .28s ease both}
+.settings-content .setting-row:nth-of-type(2){animation-delay:.025s}
+.settings-content .setting-row:nth-of-type(3){animation-delay:.05s}
+.settings-content .setting-row:nth-of-type(4){animation-delay:.075s}
+.privacy-clear{margin-top:18px}
+@keyframes settingsRowIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:620px){.settings-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.settings-tabs button{justify-content:flex-start}.settings-content .setting-row{gap:12px}.settings-content .setting-row>div:first-child{min-width:0}}
+@media(prefers-reduced-motion:reduce){.settings-content .setting-row{animation:none}}
