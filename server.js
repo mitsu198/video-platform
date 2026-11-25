@@ -178,6 +178,31 @@ app.get('/api/videos/:id/cover', requireDb, async (req,res) => {
   res.set('Content-Type',r.rows[0].cover_type||'image/jpeg').set('Cache-Control','public, max-age=3600').send(r.rows[0].cover);
 });
 
+app.get('/api/search', requireDb, async (req,res) => {
+  const q=String(req.query.q||'').trim().slice(0,80);
+  if(q.length<2) return res.json({videos:[],users:[]});
+  const pattern='%'+q+'%';
+  const [videos,users]=await Promise.all([
+    pool.query(`SELECT v.id,v.owner_id,v.title,v.playback_id,v.duration,v.created_at,v.cover,u.username
+      FROM videos v JOIN users u ON u.id=v.owner_id
+      WHERE v.is_public=TRUE AND v.status='ready' AND v.playback_id IS NOT NULL
+        AND (v.title ILIKE $1 OR u.username ILIKE $1)
+      ORDER BY CASE WHEN v.title ILIKE $2 THEN 0 ELSE 1 END,v.created_at DESC LIMIT 12`,[pattern,q+'%']),
+    pool.query(`SELECT id,username FROM users WHERE username ILIKE $1
+      ORDER BY CASE WHEN username ILIKE $2 THEN 0 ELSE 1 END,username LIMIT 8`,[pattern,q+'%'])
+  ]);
+  res.json({
+    videos:videos.rows.map(v=>({
+      id:'db-'+v.id,ownerId:String(v.owner_id),title:v.title,channel:v.username,
+      views:'Публичное видео',time:new Date(v.created_at).toLocaleDateString('ru-RU'),
+      duration:v.duration?new Date(v.duration*1000).toISOString().slice(14,19):'',
+      image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',
+      avatar:(v.username||'M').slice(0,1).toUpperCase(),category:'Для вас',
+      videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8',isPublic:true
+    })),
+    users:users.rows.map(u=>({id:String(u.id),username:u.username}))
+  });
+});
 app.get('/api/public/videos', requireDb, async (_req,res) => {
   const r=await pool.query(`SELECT v.id,v.owner_id,v.title,v.playback_id,v.duration,v.created_at,v.cover,
     u.username
