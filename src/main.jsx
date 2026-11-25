@@ -250,6 +250,7 @@ function App(){
  const [watchHistory,setWatchHistory]=useState(()=>{try{return JSON.parse(localStorage.getItem('mirvex_watch_history')||'[]')}catch{return []}});
  useEffect(()=>{localStorage.setItem('mirvex_watch_later',JSON.stringify(watchLaterIds));},[watchLaterIds]);
  useEffect(()=>{localStorage.setItem('mirvex_watch_history',JSON.stringify(watchHistory.slice(0,30)));},[watchHistory]);
+ useEffect(()=>{const clear=()=>setWatchHistory([]);window.addEventListener('mirvex:clear-history',clear);return()=>window.removeEventListener('mirvex:clear-history',clear);},[]);
  const loadPublicVideos=async()=>{const r=await fetch('https://mirvex-api.onrender.com/api/public/videos');const d=await r.json();if(r.ok)setPublicVideos(d.videos||[]);};
  const loadVideos=async t=>{const r=await fetch('https://mirvex-api.onrender.com/api/videos',{headers:{Authorization:'Bearer '+t}});const d=await r.json();if(r.ok)setUploaded(d.videos||[]);};
  const loadLibrary=async t=>{try{const h={Authorization:'Bearer '+t};const [f,p]=await Promise.all([fetch('https://mirvex-api.onrender.com/api/library/favorites',{headers:h}),fetch('https://mirvex-api.onrender.com/api/library/playlists',{headers:h})]);const [fd,pd]=await Promise.all([f.json(),p.json()]);if(f.ok){setFavoriteVideos(fd.videos||[]);setFavoriteIds((fd.videos||[]).map(v=>v.id));}if(p.ok)setPlaylists(pd.playlists||[]);}catch{}};
@@ -277,7 +278,7 @@ function App(){
  const postComment=async()=>{if(!user){setAuthOpen(true);return;}const body=commentText.trim();if(!body)return;try{const r=await fetch('https://mirvex-api.onrender.com/api/videos/'+selected.id+'/comments',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({body})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось отправить комментарий');setSocial(x=>({...x,comments:[d.comment,...x.comments]}));setCommentText('');}catch(e){alert(e.message);}};
  const subscribe=async subscribed=>{if(!user){setAuthOpen(true);return;}try{const r=await fetch('https://mirvex-api.onrender.com/api/users/'+profile.user.id+'/subscribe',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({subscribed})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось изменить подписку');setProfile(p=>({...p,...d}));}catch(e){alert(e.message);}};
  useEffect(()=>{if(selected)loadSocial(selected);},[selected?.id,token]);
- useEffect(()=>{if(selected?.id)setWatchHistory(items=>[{id:selected.id,watchedAt:Date.now()},...items.filter(x=>x.id!==selected.id)].slice(0,30));},[selected?.id]);
+ useEffect(()=>{if(selected?.id&&settings.saveHistory!==false)setWatchHistory(items=>[{id:selected.id,watchedAt:Date.now()},...items.filter(x=>x.id!==selected.id)].slice(0,30));},[selected?.id,settings.saveHistory]);
  const currentPlaylist=playlists.find(p=>p.id===selectedPlaylistId);
  const libraryVideos=[...publicVideos,...uploaded];
  const allVideos=displayedActive==='Избранное'?favoriteVideos:displayedActive==='Смотреть позже'?libraryVideos.filter(v=>watchLaterIds.includes(v.id)):displayedActive==='История'?libraryVideos.filter(v=>watchHistory.some(h=>h.id===v.id)):displayedActive==='Плейлисты'?(currentPlaylist?.videos||[]):category==='Мои видео'?uploaded:publicVideos;
