@@ -10,39 +10,54 @@ const shorts = [];
 const categories=['Для вас','Мои видео'];
 
 function MuxVideoPlayer({ src, videoId, title, channel, autoplay }) {
- const videoRef = useRef(null);
- useEffect(() => {
-  const video = videoRef.current;
-  const envKey = import.meta.env.VITE_MUX_ENV_KEY;
-  if (!video || !src || !envKey) return;
+ const videoRef=useRef(null), shellRef=useRef(null), hlsRef=useRef(null), hideRef=useRef(null);
+ const [playing,setPlaying]=useState(false),[currentTime,setCurrentTime]=useState(0),[duration,setDuration]=useState(0);
+ const [volume,setVolume]=useState(1),[muted,setMuted]=useState(false),[speed,setSpeed]=useState(1);
+ const [levels,setLevels]=useState([]),[quality,setQuality]=useState(-1),[menu,setMenu]=useState(''),[controls,setControls]=useState(true),[buffering,setBuffering]=useState(true),[theater,setTheater]=useState(false);
+ const fmt=t=>{if(!Number.isFinite(t))return '0:00';const n=Math.floor(t);return Math.floor(n/60)+':'+String(n%60).padStart(2,'0');};
+ useEffect(()=>{
+  const video=videoRef.current,envKey=import.meta.env.VITE_MUX_ENV_KEY;
+  if(!video||!src)return;
   let hls;
-  if (src.endsWith('.m3u8') && !video.canPlayType('application/vnd.apple.mpegurl') && Hls.isSupported()) {
-   hls = new Hls({ enableWorker: true });
-   hls.loadSource(src);
-   hls.attachMedia(video);
-  } else {
-   video.src = src;
-  }
-  mux.monitor(video, {
-   debug: false,
-   respectDoNotTrack: true,
-   disableCookies: true,
-   data: {
-    env_key: envKey,
-    player_name: 'MIRVEX HTML5 Player',
-    player_version: '1.0.0',
-    player_init_time: mux.utils.now(),
-    video_id: String(videoId ?? 'unknown'),
-    video_title: title || 'Untitled video',
-    video_series: channel || 'MIRVEX',
-    video_stream_type: 'on-demand'
-   }
-  });
-  return () => { hls?.destroy(); video.mux?.destroy?.(); };
- }, [src, videoId, title, channel]);
- return <video ref={videoRef} className="mux-video" src={src} controls playsInline preload="metadata" autoPlay={autoplay} />;
+  const saved=Number(localStorage.getItem('mirvex_progress_'+videoId)||0);
+  const restore=()=>{if(saved>5&&Number.isFinite(video.duration)&&saved<video.duration-10)video.currentTime=saved;};
+  const onTime=()=>{setCurrentTime(video.currentTime||0);setDuration(video.duration||0);if(video.currentTime>0)localStorage.setItem('mirvex_progress_'+videoId,String(video.currentTime));};
+  const onReady=()=>{setDuration(video.duration||0);setBuffering(false);restore();};
+  const onWaiting=()=>setBuffering(true),onPlaying=()=>{setPlaying(true);setBuffering(false);},onPause=()=>setPlaying(false);
+  video.addEventListener('loadedmetadata',onReady);video.addEventListener('durationchange',onReady);video.addEventListener('timeupdate',onTime);video.addEventListener('waiting',onWaiting);video.addEventListener('playing',onPlaying);video.addEventListener('pause',onPause);
+  if(src.includes('.m3u8')&&!video.canPlayType('application/vnd.apple.mpegurl')&&Hls.isSupported()){
+   hls=new Hls({enableWorker:true,capLevelToPlayerSize:true});hlsRef.current=hls;hls.loadSource(src);hls.attachMedia(video);
+   hls.on(Hls.Events.MANIFEST_PARSED,()=>setLevels((hls.levels||[]).map((l,i)=>({index:i,label:l.height?l.height+'p':Math.round((l.bitrate||0)/1000)+' kbps'}))));
+  }else video.src=src;
+  if(envKey)mux.monitor(video,{debug:false,respectDoNotTrack:true,disableCookies:true,data:{env_key:envKey,player_name:'MIRVEX Player 2.0',player_version:'2.0.0',player_init_time:mux.utils.now(),video_id:String(videoId??'unknown'),video_title:title||'Untitled video',video_series:channel||'MIRVEX',video_stream_type:'on-demand'}});
+  if(autoplay)video.play().catch(()=>{});
+  return ()=>{video.removeEventListener('loadedmetadata',onReady);video.removeEventListener('durationchange',onReady);video.removeEventListener('timeupdate',onTime);video.removeEventListener('waiting',onWaiting);video.removeEventListener('playing',onPlaying);video.removeEventListener('pause',onPause);hls?.destroy();hlsRef.current=null;video.mux?.destroy?.();};
+ },[src,videoId,title,channel]);
+ const reveal=()=>{setControls(true);clearTimeout(hideRef.current);if(playing)hideRef.current=setTimeout(()=>setControls(false),2600);};
+ const togglePlay=()=>{const v=videoRef.current;if(!v)return;v.paused?v.play().catch(()=>{}):v.pause();reveal();};
+ const seek=delta=>{const v=videoRef.current;if(v)v.currentTime=Math.max(0,Math.min(v.duration||0,v.currentTime+delta));};
+ const full=()=>{const el=shellRef.current;if(!el)return;if(document.fullscreenElement)document.exitFullscreen?.();else el.requestFullscreen?.();};
+ const chooseQuality=value=>{setQuality(Number(value));if(hlsRef.current)hlsRef.current.currentLevel=Number(value);setMenu('');};
+ const chooseSpeed=value=>{setSpeed(Number(value));if(videoRef.current)videoRef.current.playbackRate=Number(value);setMenu('');};
+ useEffect(()=>{const key=e=>{const t=e.target;if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;if(!shellRef.current)return;const k=e.key.toLowerCase();if(k===' '||k==='k'){e.preventDefault();togglePlay();}else if(k==='arrowleft'){e.preventDefault();seek(-5);}else if(k==='arrowright'){e.preventDefault();seek(5);}else if(k==='m'){const v=videoRef.current;if(v){v.muted=!v.muted;setMuted(v.muted);}}else if(k==='f'){e.preventDefault();full();}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);});
+ useEffect(()=>()=>clearTimeout(hideRef.current),[]);
+ return <div ref={shellRef} className={'mirvex-player '+(theater?'player-theater':'')} onMouseMove={reveal} onMouseLeave={()=>playing&&setControls(false)} onTouchStart={reveal} onDoubleClick={full}>
+  <video ref={videoRef} className="mux-video" playsInline preload="metadata" onClick={togglePlay}/>
+  {buffering&&<div className="player-loader"><span/></div>}
+  {!playing&&<button className="player-big-play" onClick={togglePlay} aria-label="Воспроизвести"><Play fill="currentColor" size={27}/></button>}
+  <div className={'player-controls '+(controls?'controls-visible':'')} onClick={e=>e.stopPropagation()}>
+   <div className="player-seek"><span>{fmt(currentTime)}</span><input aria-label="Позиция видео" type="range" min="0" max={duration||100} step="0.1" value={Math.min(currentTime,duration||100)} onChange={e=>{if(videoRef.current)videoRef.current.currentTime=Number(e.target.value);}}/><span>{fmt(duration)}</span></div>
+   <div className="player-control-row">
+    <div className="player-control-group"><button onClick={togglePlay} aria-label={playing?'Пауза':'Воспроизвести'}>{playing?'Ⅱ':<Play size={18}/>}</button><button onClick={()=>seek(-10)} aria-label="Назад на 10 секунд">↶</button><button onClick={()=>seek(10)} aria-label="Вперёд на 10 секунд">↷</button><button onClick={()=>{const v=videoRef.current;if(v){v.muted=!v.muted;setMuted(v.muted);}}} aria-label="Звук">{muted||volume===0?'◖':'◕'}</button><input className="player-volume" aria-label="Громкость" type="range" min="0" max="1" step="0.05" value={muted?0:volume} onChange={e=>{const n=Number(e.target.value);setVolume(n);setMuted(n===0);if(videoRef.current){videoRef.current.volume=n;videoRef.current.muted=n===0;}}}/></div>
+    <div className="player-control-group player-right-controls">
+     <div className="player-menu-wrap"><button onClick={()=>setMenu(menu==='speed'?'':'speed')}>{speed}×</button>{menu==='speed'&&<div className="player-popover">{[0.5,0.75,1,1.25,1.5,1.75,2].map(n=><button key={n} className={speed===n?'selected':''} onClick={()=>chooseSpeed(n)}>{n===1?'Обычная':n+'×'}</button>)}</div>}</div>
+     {levels.length>0&&<div className="player-menu-wrap"><button onClick={()=>setMenu(menu==='quality'?'':'quality')}>HD</button>{menu==='quality'&&<div className="player-popover">{[{index:-1,label:'Авто'},...levels].map(l=><button key={l.index} className={quality===l.index?'selected':''} onClick={()=>chooseQuality(l.index)}>{l.label}</button>)}</div>}</div>}
+     <button onClick={()=>setTheater(v=>!v)} aria-label="Режим кинотеатра">▣</button><button onClick={()=>{const v=videoRef.current;if(v?.requestPictureInPicture)v.requestPictureInPicture().catch(()=>{});}} aria-label="Мини-плеер">▱</button><button onClick={full} aria-label="На весь экран"><Maximize size={17}/></button>
+    </div>
+   </div>
+  </div>
+ </div>;
 }
-
 function UploadDialog({ onClose, onUploaded, token }) {
  const [file,setFile]=useState(null);
  const [cover,setCover]=useState(null);
