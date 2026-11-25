@@ -424,13 +424,14 @@ function App(){
   </header>
   <div className="layout">
    {sidebar&&<aside className="sidebar">
-    <nav>{nav.map(([label,Icon])=><button key={label} className={'nav-item '+(active===label?'active':'')} onClick={()=>{navigate(label);setCategory('Все')}}><Icon size={20}/><span>{label}</span></button>)}</nav>
-    <div className="side-divider"/>
-    <div className="side-heading">Вы</div>
-    {library.map(([label,Icon])=><button key={label} className={'nav-item '+(active===label?'active':'')} onClick={()=>navigate(label)}><Icon size={19}/><span>{label}</span></button>)}
-    <div className="side-divider"/>
-    <div className="side-heading">Ваши подписки</div>
-    {['Дизайн без шума','Космос рядом','Точка сборки'].map((n,i)=><button className="subscription" key={n}><span className="sub-avatar">{['◉','✦','△'][i]}</span>{n}<i/></button>)}
+    <nav className="compact-sidebar-nav">
+     <button className={'nav-item '+(active==='Главная'?'active':'')} onClick={()=>{navigate('Главная');setCategory('Для вас')}}><House size={19}/><span>Главная</span></button>
+     <button className={'nav-item '+(active==='Shorts'?'active':'')} onClick={()=>navigate('Shorts')}><PlaySquare size={19}/><span>Shorts</span></button>
+     <button className={'nav-item '+(active==='В тренде'?'active':'')} onClick={()=>navigate('В тренде')}><Flame size={19}/><span>В тренде</span></button>
+     <button className={'nav-item '+(active==='Избранное'?'active':'')} onClick={()=>navigate('Избранное')}><ThumbsUp size={19}/><span>Избранное</span></button>
+     <button className={'nav-item '+(active==='Плейлисты'?'active':'')} onClick={()=>navigate('Плейлисты')}><Bookmark size={19}/><span>Плейлисты</span></button>
+     <button className={'nav-item '+(active==='Профиль'?'active':'')} onClick={()=>openProfile(user?.id)}><UserRound size={19}/><span>Профиль</span></button>
+    </nav>
     {user?.isAdmin&&<button className="nav-item admin-nav" onClick={()=>setAdminOpen(true)}><ShieldCheck size={19}/><span>Админка</span></button>}
     <button className={'sidebar-bottom '+(active==='Настройки'?'active':'')} onClick={()=>navigate('Настройки')}><Settings size={16}/> Настройки</button>
    </aside>}
