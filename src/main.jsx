@@ -160,7 +160,7 @@ function AdminDialog({token,onClose,onDelete,onOpenVideo}){
 
 function SettingsPage({settings,onChange,user,onLogout}) {
  const [section,setSection]=useState('Внешний вид');
- const sections=[['Внешний вид','◐'],['Воспроизведение','▷'],['Уведомления','♧'],['Конфиденциальность','◇'],['Аккаунт','○']];
+ const sections=[['Внешний вид','◐'],['Воспроизведение','▷'],['Уведомления','♧'],['Конфиденциальность','◇'],['Аккаунт','○'],['Правила','§']];
  const update=(key,value)=>onChange({...settings,[key]:value});
  return <section className="settings-dialog settings-page page-transition">
   <header className="settings-header"><div><div className="eyebrow">MIRVEX PERSONAL</div><h2>Настройки</h2><p>Настрой платформу под себя.</p></div></header>
@@ -195,6 +195,17 @@ function SettingsPage({settings,onChange,user,onLogout}) {
      <button className="settings-logout privacy-clear" onClick={()=>{if(confirm('Очистить историю просмотров на этом устройстве?')){localStorage.removeItem('mirvex_watch_history');window.dispatchEvent(new Event('mirvex:clear-history'));}}}>Очистить историю просмотров</button>
      <p className="settings-note">Публичные видео и профиль управляются отдельно от этих параметров.</p>
     </>}
+    {section==='Правила'&&<div className="platform-rules">
+     <div className="rules-intro"><span className="rules-symbol">§</span><div><div className="settings-section-title">MIRVEX COMMUNITY</div><h3>Правила платформы</h3><p>Смотри, публикуй и общайся. Уважай других участников и соблюдай эти правила.</p></div></div>
+     <article className="rule-card"><span>01</span><div><b>Уважение и безопасность</b><p>Запрещены травля, угрозы, преследование, разжигание ненависти и публикация чужих личных данных без согласия.</p></div></article>
+     <article className="rule-card"><span>02</span><div><b>Запрещённый контент</b><p>Не публикуй материалы с сексуальной эксплуатацией, реальным насилием, призывами к опасным действиям или иной незаконный контент.</p></div></article>
+     <article className="rule-card"><span>03</span><div><b>Авторские права</b><p>Публикуй только те видео и материалы, на которые у тебя есть права или разрешение. Не выдавай чужой контент за свой.</p></div></article>
+     <article className="rule-card"><span>04</span><div><b>Спам и обман</b><p>Запрещены массовый спам, мошенничество, фишинг, накрутка активности и вводящие в заблуждение ссылки.</p></div></article>
+     <article className="rule-card"><span>05</span><div><b>Комментарии и общение</b><p>Не оскорбляй других пользователей, не размещай рекламу без разрешения и не засоряй обсуждения повторяющимися сообщениями.</p></div></article>
+     <article className="rule-card"><span>06</span><div><b>Жалобы и модерация</b><p>Если заметил нарушение, отправь жалобу через меню видео. Администрация проверит материал и при необходимости ограничит его или удалит.</p></div></article>
+     <div className="rules-warning"><b>Что происходит при нарушении?</b><p>В зависимости от ситуации контент может быть удалён, а аккаунт — временно ограничен или заблокирован. Ложные и массовые жалобы тоже могут привести к ограничениям.</p></div>
+     <p className="settings-note">Используя MIRVEX, ты соглашаешься соблюдать эти правила. Правила могут обновляться по мере развития платформы.</p>
+    </div>}
     {section==='Аккаунт'&&<><div className="settings-section-title">Твой аккаунт</div>
      <div className="account-settings-card"><div className="account-settings-avatar">{(user?.username?.[0]||'M').toUpperCase()}</div><div><b>{user?.username||'Гость'}</b><small>{user?.email||'Войди, чтобы синхронизировать библиотеку'}</small></div></div>
      {user&&<button className="settings-logout" onClick={onLogout}>Выйти из аккаунта</button>}
