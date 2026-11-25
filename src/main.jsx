@@ -441,7 +441,7 @@ function App(){
  const currentPlaylist=playlists.find(p=>p.id===selectedPlaylistId);
  const libraryVideos=[...publicVideos,...uploaded];
  const affinity={};if(settings.personalRecommendations!==false){watchHistory.forEach(h=>{const v=libraryVideos.find(x=>x.id===h.id);if(v)affinity[v.channel]=(affinity[v.channel]||0)+3;});favoriteVideos.forEach(v=>{affinity[v.channel]=(affinity[v.channel]||0)+2;});}
- const personalizedVideos=[...publicVideos].sort((a,b)=>(affinity[b.channel]||0)-(affinity[a.channel]||0));
+ const personalizedVideos=publicVideos.filter(v=>!v.isShort).sort((a,b)=>(affinity[b.channel]||0)-(affinity[a.channel]||0));
  const allVideos=displayedActive==='Подписки'?subscriptionVideos:displayedActive==='В тренде'?trendingVideos:displayedActive==='Избранное'?favoriteVideos:displayedActive==='Смотреть позже'?libraryVideos.filter(v=>watchLaterIds.includes(v.id)):displayedActive==='История'?libraryVideos.filter(v=>watchHistory.some(h=>h.id===v.id)):displayedActive==='Плейлисты'?(currentPlaylist?.videos||[]):personalizedVideos;
  const continueVideos=watchHistory.map(h=>libraryVideos.find(v=>v.id===h.id)).filter(Boolean).slice(0,6);
  const toggleWatchLater=video=>setWatchLaterIds(ids=>ids.includes(video.id)?ids.filter(id=>id!==video.id):[video.id,...ids]);
