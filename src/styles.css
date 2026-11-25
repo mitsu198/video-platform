@@ -297,3 +297,21 @@ button:active:not(:disabled) { transform:scale(.975); }
  .shorts-actions button{width:48px}.shorts-topline{top:13px;left:14px;right:14px}
 }
 @media(max-width:420px){.shorts-page{margin-left:-8px;margin-right:-8px}.shorts-feed{height:calc(100dvh - 190px);border-radius:0}.shorts-page-heading{padding-left:12px;padding-right:12px}}
+
+
+/* MIRVEX — routed full pages */
+.settings-page{width:min(980px,100%);max-height:none;min-height:calc(100vh - 150px);overflow:visible;margin:8px auto 30px;border-radius:22px}
+.settings-page .settings-body{min-height:420px}
+.settings-page .settings-saved{font-size:10px;color:#8e91a0}
+.profile-page{width:min(900px,100%);max-height:none;overflow:visible;margin:8px auto 30px;border-radius:22px}
+.profile-page-loading{min-height:55vh;display:grid;align-content:center;justify-items:center;color:#b9bbc4}
+.nav-item.active,.sidebar-bottom.active{color:var(--accent,#fff);background:var(--accent-soft,#24252b)}
+.sidebar-bottom.active{display:flex}
+@media(max-width:760px){
+ .settings-page{width:100%;min-height:calc(100dvh - 150px);margin:0 auto 18px;border-radius:16px}
+ .settings-page .settings-body{min-height:0}
+ .profile-page{width:100%;margin:0 auto 18px;border-radius:16px}
+ .mobile-nav{height:calc(66px + env(safe-area-inset-bottom));padding:7px 3px env(safe-area-inset-bottom);overflow-x:auto;justify-content:flex-start;gap:0}
+ .mobile-nav button{flex:1 0 52px;min-width:52px;font-size:8px}
+ .main{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+}
