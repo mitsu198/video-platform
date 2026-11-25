@@ -708,3 +708,14 @@ body{background:radial-gradient(ellipse at 72% -18%,rgba(104,58,177,.16),transpa
  .admin-users-toolbar>span{font-size:10px}
  .admin-user-stats{gap:8px 13px}
 }
+
+
+/* Make creator identity an obvious, tappable channel link. */
+.channel-avatar-link{padding:0;border:0;color:#f4f4f5;cursor:pointer;transition:transform .2s,background .2s,box-shadow .2s}
+.channel-avatar-link:hover{transform:scale(1.07);background:#35313f;box-shadow:0 0 0 2px #9b7bff55}
+.channel-avatar-link:focus-visible,.channel-name:focus-visible,.modal-channel-link:focus-visible{outline:2px solid #a78bfa;outline-offset:3px}
+@media(max-width:760px){
+ .mobile-nav button{min-width:0;flex:1 1 0;gap:4px}
+ .mobile-nav .mobile-create{flex:0 0 48px;width:48px;height:48px;min-width:48px;border-radius:16px;background:linear-gradient(145deg,#b39aff,#8060d9);color:#fff;display:grid;place-items:center;box-shadow:0 5px 20px #8b6ae64a}
+ .mobile-nav .mobile-create svg{width:24px;height:24px}
+}
