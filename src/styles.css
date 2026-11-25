@@ -620,3 +620,16 @@ body{background:radial-gradient(ellipse at 72% -18%,rgba(104,58,177,.16),transpa
  .shorts-comments-sheet{height:58dvh!important;max-height:calc(100dvh - 100px)!important}
  .shorts-comments-sheet form.shorts-comment-compose{padding-bottom:calc(10px + env(safe-area-inset-bottom))!important}
 }
+
+
+/* Composer is intentionally placed above the Shorts comment list */
+.shorts-comments-sheet form.shorts-comment-compose-top{
+ order:1!important;flex:0 0 auto!important;
+ border-top:0!important;border-bottom:1px solid rgba(255,255,255,.1)!important;
+ background:#1c1c24!important;
+}
+.shorts-comments-sheet .shorts-comments-list{order:2!important}
+.admin-top-button{color:#c5a7ff!important}
+@media(max-width:760px){
+ .top-actions .admin-top-button{display:grid!important;place-items:center!important;width:32px!important;height:34px!important;flex:0 0 32px!important}
+}
