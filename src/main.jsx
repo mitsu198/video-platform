@@ -97,7 +97,7 @@ function UploadDialog({ onClose, onUploaded, token }) {
    }
    if(!ready) throw new Error('Обработка занимает больше обычного. Попробуйте проверить позже.');
    if(cover){const fd=new FormData();fd.append('cover',cover);const cr=await fetch('https://mirvex-api.onrender.com/api/videos/'+ready.videoId+'/cover',{method:'POST',headers:{Authorization:'Bearer '+token},body:fd});const cd=await cr.json();if(!cr.ok)throw new Error(cd.error||'Не удалось сохранить обложку');}
-   const item={id:'db-'+ready.videoId,title:title||file.name,channel:'Мой канал',views:'Новое видео',time:'Только что',duration:ready.duration?new Date(ready.duration*1000).toISOString().slice(14,19):'',image:cover?URL.createObjectURL(cover):'https://image.mux.com/'+ready.playbackId+'/thumbnail.jpg?width=900',avatar:'М',category:'Мои видео',videoUrl:'https://stream.mux.com/'+ready.playbackId+'.m3u8',isShort:!!ready.isShort};
+   const item={id:'db-'+ready.videoId,title:title||file.name,channel:'Мой канал',views:'Новое видео',time:'Только что',duration:ready.duration?new Date(ready.duration*1000).toISOString().slice(14,19):'',image:cover?URL.createObjectURL(cover):'https://image.mux.com/'+ready.playbackId+'/thumbnail.jpg?width=900',avatar:'М',category:'Мои видео',videoUrl:'https://stream.mux.com/'+ready.playbackId+'.m3u8',isShort:!!ready.isShort,isPublic:true};
    onUploaded(item);
    setStatus('done'); setMessage('Видео опубликовано и готово к просмотру!');
   } catch(e){setStatus('error');setMessage(e.message||'Не удалось загрузить видео');}
@@ -105,7 +105,7 @@ function UploadDialog({ onClose, onUploaded, token }) {
  return <div className="upload-backdrop" onClick={onClose}><div className="upload-dialog" onClick={e=>e.stopPropagation()}>
   <button className="modal-close" onClick={onClose}><X/></button><div className="eyebrow">MIRVEX STUDIO</div><h2>Загрузить видео</h2><p className="upload-hint">Выбери видео с устройства. Файл отправится напрямую в Mux.</p>
   <label className="upload-field">Название видео<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Например, мой первый ролик"/></label>
-  <label className="upload-short-toggle"><input type="checkbox" checked={isShort} onChange={e=>setIsShort(e.target.checked)}/><span><b>Опубликовать как MIRVEX Short</b><small>Вертикальный ролик до 3 минут. После загрузки его можно опубликовать для всех.</small></span></label>
+  <label className="upload-short-toggle"><input type="checkbox" checked={isShort} onChange={e=>setIsShort(e.target.checked)}/><span><b>Опубликовать как MIRVEX Short</b><small>Вертикальный ролик до 3 минут. После обработки он автоматически появится в Shorts для всех.</small></span></label>
   <input ref={chooseRef} type="file" accept="video/*" hidden onChange={e=>setFile(e.target.files?.[0]||null)}/>
   <button className="file-picker" onClick={()=>chooseRef.current?.click()} disabled={status==='uploading'}><Film size={20}/><span>{file?file.name:'Выбрать видеофайл'}</span><small>{file?(file.size/1024/1024).toFixed(1)+' МБ':'MP4, MOV и другие форматы'}</small></button>
   <input ref={coverRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e=>setCover(e.target.files?.[0]||null)}/>
@@ -371,7 +371,7 @@ function App(){
    return()=>{cancelled=true;clearTimeout(timer);window.removeEventListener('online',onOnline);};
   },[token]);
  const removeAdminVideo=id=>{setPublicVideos(items=>items.filter(v=>v.id!==id));setUploaded(items=>items.filter(v=>v.id!==id));if(selected?.id===id)setSelected(null);};
- const addUploaded=item=>{const owned={...item,ownerId:String(user?.id||''),isPublic:false};setUploaded(list=>[owned,...list]);setCategory('Мои видео');setSelected(owned);setUploadOpen(false);loadVideos(token);loadShortVideos();};
+ const addUploaded=item=>{const owned={...item,ownerId:String(user?.id||''),isPublic:true};setUploaded(list=>[owned,...list]);setPublicVideos(list=>[owned,...list.filter(v=>v.id!==owned.id)]);setCategory('Для вас');setSelected(owned);setUploadOpen(false);loadVideos(token);loadPublicVideos();loadShortVideos();};
  const togglePublish=async video=>{try{const next=!video.isPublic;const r=await fetch('https://mirvex-api.onrender.com/api/videos/'+video.id.replace('db-','')+'/publish',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({isPublic:next})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось изменить публикацию');setUploaded(items=>items.map(v=>v.id===video.id?{...v,isPublic:next}:v));setSelected(v=>v?.id===video.id?{...v,isPublic:next}:v);await loadPublicVideos();await loadShortVideos();}catch(e){alert(e.message);}};
  const [category,setCategory]=useState('Для вас');
  const [query,setQuery]=useState('');
