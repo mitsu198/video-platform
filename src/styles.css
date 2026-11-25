@@ -591,3 +591,32 @@ body{background:radial-gradient(ellipse at 72% -18%,rgba(104,58,177,.16),transpa
  .shorts-comment-compose{padding:10px 12px calc(10px + env(safe-area-inset-bottom));gap:8px}
  .shorts-comment-compose button{padding:10px 12px}
 }
+
+
+/* Guarantee the Shorts comment composer remains visible above mobile navigation */
+.shorts-comments-sheet{z-index:9999!important;display:flex!important;flex-direction:column!important;bottom:0!important}
+.shorts-comments-sheet .shorts-comments-list{flex:1 1 0!important;min-height:0!important;overflow-y:auto!important}
+.shorts-comments-sheet form.shorts-comment-compose{
+ display:flex!important;visibility:visible!important;opacity:1!important;
+ position:relative!important;inset:auto!important;transform:none!important;
+ flex:0 0 auto!important;flex-shrink:0!important;width:100%!important;
+ min-height:66px!important;box-sizing:border-box!important;
+ align-items:center!important;gap:8px!important;
+ padding:10px 12px calc(10px + env(safe-area-inset-bottom))!important;
+ background:#202029!important;border-top:1px solid rgba(255,255,255,.12)!important;
+}
+.shorts-comments-sheet form.shorts-comment-compose input{
+ display:block!important;visibility:visible!important;opacity:1!important;
+ flex:1 1 auto!important;width:0!important;min-width:0!important;
+ height:42px!important;box-sizing:border-box!important;
+ color:#fff!important;background:#111117!important;
+}
+.shorts-comments-sheet form.shorts-comment-compose button{
+ display:inline-flex!important;visibility:visible!important;opacity:1!important;
+ flex:0 0 auto!important;align-items:center!important;justify-content:center!important;
+ min-height:40px!important;white-space:nowrap!important;
+}
+@media(max-width:600px){
+ .shorts-comments-sheet{height:58dvh!important;max-height:calc(100dvh - 100px)!important}
+ .shorts-comments-sheet form.shorts-comment-compose{padding-bottom:calc(10px + env(safe-area-inset-bottom))!important}
+}
