@@ -220,8 +220,7 @@ function ProfilePage({profile,onSubscribe,own,onOpenVideo,onRenameVideo,onDelete
 function AmbientEffect({type,density=35,speed='normal'}) {
  if(!type||type==='none') return null;
  const count=Math.max(8,Math.min(90,Math.round(Number(density)*0.9)));
- const glyph=type==='snow'?'❄':'✿';
- return <div className={'ambient-effect ambient-'+type+' speed-'+speed} aria-hidden="true">{Array.from({length:count},(_,i)=><span key={i} style={{left:((i*37)%100)+'%',animationDelay:('-'+((i*13)%24))+'s',animationDuration:(speed==='slow'?24:speed==='fast'?9:16)+((i*7)%12)+'s',fontSize:(type==='snow'?8+(i*5)%12:10+(i*7)%13)+'px',opacity:.25+((i*11)%65)/100}}>{glyph}</span>)}</div>;
+ return <div className={'ambient-effect ambient-'+type+' speed-'+speed} aria-hidden="true">{Array.from({length:count},(_,i)=><span key={i} className="ambient-particle" style={{left:((i*37)%100)+'%',animationDelay:('-'+((i*13)%24))+'s',animationDuration:(speed==='slow'?24:speed==='fast'?9:16)+((i*7)%12)+'s',width:(type==='snow'?2+(i*7)%4:8+(i*5)%7)+'px',height:(type==='snow'?2+(i*7)%4:12+(i*3)%8)+'px',opacity:type==='snow'?.3+((i*11)%65)/100:.45+((i*9)%50)/100}}/>)}</div>;
 }
 
 
