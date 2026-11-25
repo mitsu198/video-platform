@@ -110,7 +110,7 @@ app.post('/api/auth/register', requireDb, async (req,res) => {
     if (password.length<8) return res.status(400).json({error:'Пароль должен быть не короче 8 символов'});
     const hash=await bcrypt.hash(password,12);
     const result=await pool.query('INSERT INTO users(email,username,password_hash) VALUES($1,$2,$3) RETURNING id,email,username',[email,username,hash]);
-    const user=result.rows[0], token=jwt.sign({id:user.id,email:user.email,username:user.username},JWT_SECRET,{expiresIn:'30d'});
+    const user=result.rows[0], token=jwt.sign({id:user.id,email:user.email,username:user.username},JWT_SECRET,{expiresIn:'90d'});
     res.status(201).json({token,user});
   } catch(e) {
     if(e.code==='23505') return res.status(409).json({error:'Аккаунт с такой почтой уже существует'});
@@ -123,7 +123,7 @@ app.post('/api/auth/login', requireDb, async (req,res) => {
     const result=await pool.query('SELECT id,email,username,password_hash FROM users WHERE email=$1',[email]);
     const user=result.rows[0];
     if(!user || !(await bcrypt.compare(password,user.password_hash))) return res.status(401).json({error:'Неверная почта или пароль'});
-    const token=jwt.sign({id:user.id,email:user.email,username:user.username},JWT_SECRET,{expiresIn:'30d'});
+    const token=jwt.sign({id:user.id,email:user.email,username:user.username},JWT_SECRET,{expiresIn:'90d'});
     res.json({token,user:{id:user.id,email:user.email,username:user.username,isAdmin:isAdminEmail(user.email)}});
   } catch { res.status(500).json({error:'Не удалось войти'}); }
 });
