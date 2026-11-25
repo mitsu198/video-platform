@@ -63,11 +63,13 @@
 .ambient-title{margin-top:25px}
 .setting-row input[type=range]{width:125px;accent-color:#e8e8eb;flex-shrink:0}
 .ambient-effect{position:fixed;inset:0;z-index:18;pointer-events:none;overflow:hidden;contain:strict}
-.ambient-effect span{position:absolute;top:-8vh;color:#fff;text-shadow:0 0 9px #fff8;animation:ambient-fall linear infinite;will-change:transform}
-.ambient-sakura span{color:#ffb8d0;text-shadow:0 0 10px #ff8ebc99}
-.ambient-sakura span:nth-child(3n){transform:rotate(35deg)}
-.ambient-sakura span:nth-child(3n + 1){color:#ffd1df}
-@keyframes ambient-fall{0%{transform:translate3d(0,-8vh,0) rotate(0deg)}25%{transform:translate3d(24px,25vh,0) rotate(90deg)}50%{transform:translate3d(-18px,52vh,0) rotate(190deg)}75%{transform:translate3d(22px,78vh,0) rotate(280deg)}100%{transform:translate3d(-8px,112vh,0) rotate(360deg)}}
+.ambient-effect .ambient-particle{position:absolute;top:-8vh;display:block;animation:ambient-fall linear infinite;will-change:transform}
+.ambient-snow .ambient-particle{border-radius:50%;background:rgba(255,255,255,.96);box-shadow:0 0 5px 1px #fff8}
+.ambient-sakura .ambient-particle{border-radius:85% 0 85% 0;background:linear-gradient(145deg,#ffe5ef 0%,#ffb7d0 52%,#f48fb5 100%);box-shadow:0 0 7px #ff9fc766;animation-name:ambient-petal-fall}
+.ambient-sakura .ambient-particle:nth-child(3n){border-radius:100% 0 100% 0;filter:brightness(1.08)}
+.ambient-sakura .ambient-particle:nth-child(3n + 1){background:linear-gradient(145deg,#fff0f5 0%,#ffc6d9 55%,#ee91b2 100%)}
+@keyframes ambient-fall{0%{transform:translate3d(0,-8vh,0)}25%{transform:translate3d(24px,25vh,0)}50%{transform:translate3d(-18px,52vh,0)}75%{transform:translate3d(22px,78vh,0)}100%{transform:translate3d(-8px,112vh,0)}}
+@keyframes ambient-petal-fall{0%{transform:translate3d(0,-8vh,0) rotate(0deg)}20%{transform:translate3d(28px,20vh,0) rotate(100deg)}45%{transform:translate3d(-24px,46vh,0) rotate(210deg)}70%{transform:translate3d(30px,76vh,0) rotate(300deg)}100%{transform:translate3d(-12px,112vh,0) rotate(430deg)}}
 .reduce-motion .ambient-effect{display:none}
 @media(prefers-reduced-motion:reduce){.ambient-effect{display:none}}
 @media(max-width:760px){.ambient-effect{z-index:18}.setting-row input[type=range]{width:95px}}
