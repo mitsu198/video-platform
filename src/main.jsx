@@ -7,7 +7,7 @@ import './styles.css';
 
 const videos = [];
 const shorts = [];
-const categories=['Для вас','Мои видео'];
+const categories=['Для вас'];
 
 function MuxVideoPlayer({ src, videoId, title, channel, autoplay, token, onTheaterChange }) {
  const videoRef=useRef(null), shellRef=useRef(null), hlsRef=useRef(null), hideRef=useRef(null), viewTracked=useRef(false);
@@ -410,7 +410,7 @@ function App(){
  const libraryVideos=[...publicVideos,...uploaded];
  const affinity={};if(settings.personalRecommendations!==false){watchHistory.forEach(h=>{const v=libraryVideos.find(x=>x.id===h.id);if(v)affinity[v.channel]=(affinity[v.channel]||0)+3;});favoriteVideos.forEach(v=>{affinity[v.channel]=(affinity[v.channel]||0)+2;});}
  const personalizedVideos=[...publicVideos].sort((a,b)=>(affinity[b.channel]||0)-(affinity[a.channel]||0));
- const allVideos=displayedActive==='В тренде'?trendingVideos:displayedActive==='Избранное'?favoriteVideos:displayedActive==='Смотреть позже'?libraryVideos.filter(v=>watchLaterIds.includes(v.id)):displayedActive==='История'?libraryVideos.filter(v=>watchHistory.some(h=>h.id===v.id)):displayedActive==='Плейлисты'?(currentPlaylist?.videos||[]):category==='Мои видео'?uploaded:personalizedVideos;
+ const allVideos=displayedActive==='В тренде'?trendingVideos:displayedActive==='Избранное'?favoriteVideos:displayedActive==='Смотреть позже'?libraryVideos.filter(v=>watchLaterIds.includes(v.id)):displayedActive==='История'?libraryVideos.filter(v=>watchHistory.some(h=>h.id===v.id)):displayedActive==='Плейлисты'?(currentPlaylist?.videos||[]):personalizedVideos;
  const continueVideos=watchHistory.map(h=>libraryVideos.find(v=>v.id===h.id)).filter(Boolean).slice(0,6);
  const toggleWatchLater=video=>setWatchLaterIds(ids=>ids.includes(video.id)?ids.filter(id=>id!==video.id):[video.id,...ids]);
  const filtered=useMemo(()=>allVideos.filter(v=> (v.title+' '+v.channel).toLowerCase().includes(query.toLowerCase())),[allVideos,category,query]);
