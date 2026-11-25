@@ -376,7 +376,25 @@ function App(){
  const [category,setCategory]=useState('Для вас');
  const [query,setQuery]=useState('');
  const [searchOpen,setSearchOpen]=useState(false);
+ const [searchResults,setSearchResults]=useState({videos:[],users:[]});
+ const [searchLoading,setSearchLoading]=useState(false);
  const [selected,setSelected]=useState(null);
+ useEffect(()=>{
+  const term=query.trim();
+  if(!term){setSearchResults({videos:[],users:[]});setSearchLoading(false);return;}
+  let cancelled=false;
+  const timer=setTimeout(async()=>{
+   setSearchLoading(true);
+   try{
+    const response=await fetch('https://mirvex-api.onrender.com/api/search?q='+encodeURIComponent(term));
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||'Поиск недоступен');
+    if(!cancelled)setSearchResults({videos:data.videos||[],users:data.users||[]});
+   }catch{if(!cancelled)setSearchResults({videos:[],users:[]});}
+   finally{if(!cancelled)setSearchLoading(false);}
+  },250);
+  return()=>{cancelled=true;clearTimeout(timer);};
+ },[query]);
  const [theaterOpen,setTheaterOpen]=useState(false);
  const [sidebar,setSidebar]=useState(true);
  const [liked,setLiked]=useState([]);
@@ -401,7 +419,7 @@ function App(){
  return <div className={"app theme-"+settings.theme+" accent-"+(settings.accent||"violet")+" font-"+settings.fontSize+(settings.compact?" compact-grid":"")+(settings.reduceMotion?" reduce-motion":"")}>
   <header className="topbar">
    <div className="brand-area"><button className="icon-btn menu-btn" onClick={()=>setSidebar(!sidebar)} aria-label="Меню"><Menu/></button><a className="brand" href="/" onClick={e=>{e.preventDefault();navigate('Главная');setCategory('Для вас')}}><span className="brand-mark brand-monogram">M</span><span>MIRVEX<span className="brand-dot">.</span></span></a></div>
-   <div className="search-wrap"><div className="search-box"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Поиск видео и каналов"/>{query&&<button className="clear-search" onClick={()=>setQuery('')}><X size={16}/></button>}</div><button className="icon-btn mic-btn" aria-label="Голосовой поиск"><Mic size={18}/></button></div>
+   <div className="search-wrap"><div className="search-box"><Search size={18}/><input value={query} onFocus={()=>setSearchOpen(true)} onChange={e=>{setQuery(e.target.value);setSearchOpen(true);}} onKeyDown={e=>{if(e.key==='Enter'&&searchResults.videos[0]){setSelected(searchResults.videos[0]);setSearchOpen(false);}}} placeholder="Поиск видео и каналов"/>{query&&<button className="clear-search" onClick={()=>setQuery('')}><X size={16}/></button>}</div>{searchOpen&&query.trim()&&<div className="search-results">{searchLoading?<div className="search-result-empty">Ищем…</div>:<>{searchResults.videos.map(v=><button className="search-result-item" key={"video-"+v.id} onClick={()=>{setSelected(v);setSearchOpen(false);}}><span className="search-result-icon"><Play size={15}/></span><span><b>{v.title}</b><small>Видео · {v.channel}</small></span></button>)}{searchResults.users.map(u=><button className="search-result-item" key={"user-"+u.id} onClick={()=>{setSearchOpen(false);setQuery('');openProfile(u.id);}}><span className="search-result-avatar">{(u.username||"M").slice(0,1).toUpperCase()}</span><span><b>{u.username}</b><small>Канал пользователя</small></span></button>)}{!searchResults.videos.length&&!searchResults.users.length&&<div className="search-result-empty">Ничего не найдено</div>}</>}</div>}<button className="icon-btn mic-btn" aria-label="Голосовой поиск"><Mic size={18}/></button></div>
    <div className="top-actions"><button className="create-btn" onClick={()=>user?setUploadOpen(true):setAuthOpen(true)}><Plus size={18}/> <span>Создать</span></button><button className="icon-btn notification-btn" aria-label="Уведомления" onClick={()=>user?setNotificationsOpen(v=>!v):setAuthOpen(true)}><Bell size={19}/>{notificationUnread>0&&<i className="notification-dot">{notificationUnread>9?'9+':notificationUnread}</i>}</button><button className="profile-avatar" onClick={()=>user?openProfile(user.id):setAuthOpen(true)} title={user?'Профиль':'Войти'}>{user?(user.username?.[0]||'М').toUpperCase():'Войти'}</button></div>
   </header>
   <div className="layout">
