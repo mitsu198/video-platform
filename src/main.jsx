@@ -288,7 +288,28 @@ function App(){
  const logout=()=>{localStorage.removeItem('mirvex_token');setToken('');setUser(null);setUploaded([]);setFavoriteVideos([]);setFavoriteIds([]);setPlaylists([]);};
  useEffect(()=>{loadPublicVideos();fetch('https://mirvex-api.onrender.com/api/trending/videos').then(r=>r.ok?r.json():Promise.reject()).then(d=>setTrendingVideos(d.videos||[])).catch(()=>{});},[]);
  useEffect(()=>{const id=new URLSearchParams(window.location.search).get('video');if(id&&publicVideos.length){const v=publicVideos.find(x=>x.id===id);if(v)setSelected(v);}},[publicVideos]);
- useEffect(()=>{if(!token)return;fetch('https://mirvex-api.onrender.com/api/auth/me',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():Promise.reject()).then(d=>{setUser(d.user);loadVideos(token);loadLibrary(token)}).catch(()=>logout());},[]);
+ useEffect(()=>{
+   if(!token)return;
+   let cancelled=false,attempt=0,timer;
+   const restore=async()=>{
+    try{
+     const response=await fetch('https://mirvex-api.onrender.com/api/auth/me',{headers:{Authorization:'Bearer '+token}});
+     if(response.status===401){if(!cancelled)logout();return;}
+     if(!response.ok)throw new Error('Temporary API error: '+response.status);
+     const data=await response.json();
+     if(cancelled)return;
+     setUser(data.user);loadVideos(token);loadLibrary(token);
+    }catch(error){
+     if(cancelled)return;
+     // Keep the saved session through network errors, Render cold starts, and temporary 5xx responses.
+     if(attempt<5){const delay=Math.min(15000,1500*Math.pow(2,attempt++));timer=setTimeout(restore,delay);}
+    }
+   };
+   const onOnline=()=>{clearTimeout(timer);restore();};
+   restore();
+   window.addEventListener('online',onOnline);
+   return()=>{cancelled=true;clearTimeout(timer);window.removeEventListener('online',onOnline);};
+  },[token]);
  const removeAdminVideo=id=>{setPublicVideos(items=>items.filter(v=>v.id!==id));setUploaded(items=>items.filter(v=>v.id!==id));if(selected?.id===id)setSelected(null);};
  const addUploaded=item=>{const owned={...item,ownerId:String(user?.id||''),isPublic:false};setUploaded(list=>[owned,...list]);setCategory('Мои видео');setSelected(owned);setUploadOpen(false);loadVideos(token);};
  const togglePublish=async video=>{try{const next=!video.isPublic;const r=await fetch('https://mirvex-api.onrender.com/api/videos/'+video.id.replace('db-','')+'/publish',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({isPublic:next})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось изменить публикацию');setUploaded(items=>items.map(v=>v.id===video.id?{...v,isPublic:next}:v));setSelected(v=>v?.id===video.id?{...v,isPublic:next}:v);await loadPublicVideos();}catch(e){alert(e.message);}};
