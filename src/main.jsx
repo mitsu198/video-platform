@@ -13,27 +13,28 @@ function MuxVideoPlayer({ src, videoId, title, channel, autoplay, token, onTheat
  const videoRef=useRef(null), shellRef=useRef(null), hlsRef=useRef(null), hideRef=useRef(null), viewTracked=useRef(false);
  const [playing,setPlaying]=useState(false),[currentTime,setCurrentTime]=useState(0),[duration,setDuration]=useState(0);
  const [volume,setVolume]=useState(1),[muted,setMuted]=useState(false),[speed,setSpeed]=useState(1);
- const [levels,setLevels]=useState([]),[quality,setQuality]=useState(-1),[menu,setMenu]=useState(''),[controls,setControls]=useState(true),[buffering,setBuffering]=useState(true),[theater,setTheater]=useState(false);
+ const [levels,setLevels]=useState([]),[quality,setQuality]=useState(-1),[menu,setMenu]=useState(''),[controls,setControls]=useState(true),[buffering,setBuffering]=useState(true),[theater,setTheater]=useState(false),[playerError,setPlayerError]=useState(''),[retryCount,setRetryCount]=useState(0);
  const fmt=t=>{if(!Number.isFinite(t))return '0:00';const n=Math.floor(t);return Math.floor(n/60)+':'+String(n%60).padStart(2,'0');};
  useEffect(()=>{
   const video=videoRef.current,envKey=import.meta.env.VITE_MUX_ENV_KEY;
-  viewTracked.current=false;
+  viewTracked.current=false;setPlayerError('');setBuffering(true);
   if(!video||!src)return;
   let hls;
   const saved=Number(localStorage.getItem('mirvex_progress_'+videoId)||0);
   const restore=()=>{if(saved>5&&Number.isFinite(video.duration)&&saved<video.duration-10)video.currentTime=saved;};
   const onTime=()=>{setCurrentTime(video.currentTime||0);setDuration(video.duration||0);if(video.currentTime>0){if(video.duration&&video.currentTime>=video.duration-8){localStorage.removeItem('mirvex_progress_'+videoId);localStorage.removeItem('mirvex_duration_'+videoId);}else{localStorage.setItem('mirvex_progress_'+videoId,String(video.currentTime));if(video.duration)localStorage.setItem('mirvex_duration_'+videoId,String(video.duration));}}};
   const onReady=()=>{setDuration(video.duration||0);setBuffering(false);restore();};
-  const onWaiting=()=>setBuffering(true),onPlaying=()=>{setPlaying(true);setBuffering(false);if(token&&!viewTracked.current){viewTracked.current=true;fetch('https://mirvex-api.onrender.com/api/videos/'+videoId+'/view',{method:'POST',headers:{Authorization:'Bearer '+token}}).catch(()=>{});}},onPause=()=>setPlaying(false);
-  video.addEventListener('loadedmetadata',onReady);video.addEventListener('durationchange',onReady);video.addEventListener('timeupdate',onTime);video.addEventListener('waiting',onWaiting);video.addEventListener('playing',onPlaying);video.addEventListener('pause',onPause);
+  const onWaiting=()=>setBuffering(true),onPlaying=()=>{setPlaying(true);setBuffering(false);setPlayerError('');if(token&&!viewTracked.current){viewTracked.current=true;fetch('https://mirvex-api.onrender.com/api/videos/'+videoId+'/view',{method:'POST',headers:{Authorization:'Bearer '+token}}).catch(()=>{});}},onPause=()=>setPlaying(false),onMediaError=()=>{const code=video.error?.code;setPlayerError(code===2?'Проблема с интернет-соединением.':code===3?'Не удалось декодировать видео.':'Видеопоток недоступен. Попробуйте ещё раз.');setBuffering(false);};
+  video.addEventListener('loadedmetadata',onReady);video.addEventListener('durationchange',onReady);video.addEventListener('timeupdate',onTime);video.addEventListener('waiting',onWaiting);video.addEventListener('playing',onPlaying);video.addEventListener('pause',onPause);video.addEventListener('error',onMediaError);
   if(src.includes('.m3u8')&&!video.canPlayType('application/vnd.apple.mpegurl')&&Hls.isSupported()){
-   hls=new Hls({enableWorker:true,capLevelToPlayerSize:true});hlsRef.current=hls;hls.loadSource(src);hls.attachMedia(video);
+   hls=new Hls({enableWorker:true,capLevelToPlayerSize:true,backBufferLength:30});hlsRef.current=hls;hls.loadSource(src);hls.attachMedia(video);
    hls.on(Hls.Events.MANIFEST_PARSED,()=>setLevels((hls.levels||[]).map((l,i)=>({index:i,label:l.height?l.height+'p':Math.round((l.bitrate||0)/1000)+' kbps'}))));
+   hls.on(Hls.Events.ERROR,(_event,data)=>{if(!data.fatal)return;if(data.type===Hls.ErrorTypes.NETWORK_ERROR){hls.startLoad();return;}if(data.type===Hls.ErrorTypes.MEDIA_ERROR){hls.recoverMediaError();return;}setPlayerError('Не удалось загрузить видеопоток. Проверьте подключение и попробуйте ещё раз.');setBuffering(false);});
   }else video.src=src;
   if(envKey)mux.monitor(video,{debug:false,respectDoNotTrack:true,disableCookies:true,data:{env_key:envKey,player_name:'MIRVEX Player 2.0',player_version:'2.0.0',player_init_time:mux.utils.now(),video_id:String(videoId??'unknown'),video_title:title||'Untitled video',video_series:channel||'MIRVEX',video_stream_type:'on-demand'}});
   if(autoplay)video.play().catch(()=>{});
-  return ()=>{video.removeEventListener('loadedmetadata',onReady);video.removeEventListener('durationchange',onReady);video.removeEventListener('timeupdate',onTime);video.removeEventListener('waiting',onWaiting);video.removeEventListener('playing',onPlaying);video.removeEventListener('pause',onPause);hls?.destroy();hlsRef.current=null;video.mux?.destroy?.();};
- },[src,videoId,title,channel,token]);
+  return ()=>{video.removeEventListener('loadedmetadata',onReady);video.removeEventListener('durationchange',onReady);video.removeEventListener('timeupdate',onTime);video.removeEventListener('waiting',onWaiting);video.removeEventListener('playing',onPlaying);video.removeEventListener('pause',onPause);video.removeEventListener('error',onMediaError);hls?.destroy();hlsRef.current=null;video.mux?.destroy?.();};
+ },[src,videoId,title,channel,token,retryCount]);
  const reveal=()=>{setControls(true);clearTimeout(hideRef.current);if(playing)hideRef.current=setTimeout(()=>setControls(false),2600);};
  const togglePlay=()=>{const v=videoRef.current;if(!v)return;v.paused?v.play().catch(()=>{}):v.pause();reveal();};
  const seek=delta=>{const v=videoRef.current;if(v)v.currentTime=Math.max(0,Math.min(v.duration||0,v.currentTime+delta));};
@@ -43,8 +44,9 @@ function MuxVideoPlayer({ src, videoId, title, channel, autoplay, token, onTheat
  useEffect(()=>{const key=e=>{const t=e.target;if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;if(!shellRef.current)return;const k=e.key.toLowerCase();if(k===' '||k==='k'){e.preventDefault();togglePlay();}else if(k==='arrowleft'){e.preventDefault();seek(-5);}else if(k==='arrowright'){e.preventDefault();seek(5);}else if(k==='m'){const v=videoRef.current;if(v){v.muted=!v.muted;setMuted(v.muted);}}else if(k==='f'){e.preventDefault();full();}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);});
  useEffect(()=>()=>clearTimeout(hideRef.current),[]);
  return <div ref={shellRef} className={'mirvex-player '+(theater?'player-theater':'')} onMouseMove={reveal} onMouseLeave={()=>playing&&setControls(false)} onTouchStart={reveal} onDoubleClick={full}>
-  <video ref={videoRef} className="mux-video" playsInline preload="metadata" onClick={togglePlay}/>
-  {buffering&&<div className="player-loader"><span/></div>}
+  <video ref={videoRef} className="mux-video" crossOrigin="anonymous" playsInline preload="auto" onClick={togglePlay}/>
+  {buffering&&!playerError&&<div className="player-loader"><span/></div>}
+  {playerError&&<div className="player-error"><p>{playerError}</p><button onClick={()=>{setPlayerError('');setBuffering(true);setRetryCount(n=>n+1);}}>Повторить</button></div>}
   {!playing&&<button className="player-big-play" onClick={togglePlay} aria-label="Воспроизвести"><Play fill="currentColor" size={27}/></button>}
   <div className={'player-controls '+(controls?'controls-visible':'')} onClick={e=>e.stopPropagation()}>
    <div className="player-seek"><span>{fmt(currentTime)}</span><input aria-label="Позиция видео" type="range" min="0" max={duration||100} step="0.1" value={Math.min(currentTime,duration||100)} onChange={e=>{if(videoRef.current)videoRef.current.currentTime=Number(e.target.value);}}/><span>{fmt(duration)}</span></div>
