@@ -691,3 +691,20 @@ body{background:radial-gradient(ellipse at 72% -18%,rgba(104,58,177,.16),transpa
  .shorts-actions button{width:46px;min-height:49px;padding:6px 2px;border-radius:14px}
 }
 @media(prefers-reduced-motion:reduce){.shorts-upload-button,.shorts-actions button{transition:none}}
+
+
+/* MIRVEX admin account directory */
+.admin-users-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 24px 5px}
+.admin-users-toolbar input{width:min(420px,65%);min-width:0;height:40px;padding:0 13px;border:1px solid #343540;border-radius:11px;background:#171820;color:#f4f2fa;outline:none}
+.admin-users-toolbar input:focus{border-color:#8f70df}
+.admin-users-toolbar>span{color:#9696a4;font-size:11px;white-space:nowrap}
+.admin-users-toolbar>span b{color:#d9c8ff}
+.admin-user-card h3 small{color:#898895;font-size:11px;font-weight:500}
+.admin-user-stats{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:13px;color:#92919e;font-size:11px}
+.admin-user-stats b{color:#e4d9ff;font-size:13px;margin-right:3px}
+@media(max-width:760px){
+ .admin-users-toolbar{align-items:stretch;flex-direction:column;padding:12px}
+ .admin-users-toolbar input{width:100%}
+ .admin-users-toolbar>span{font-size:10px}
+ .admin-user-stats{gap:8px 13px}
+}
