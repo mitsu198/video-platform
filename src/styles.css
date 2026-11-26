@@ -998,3 +998,27 @@ img,video{max-width:100%}
 .settings-page .settings-header{justify-content:center;align-items:center;text-align:center}
 .settings-page .settings-header>div{width:100%;display:flex;flex-direction:column;align-items:center}
 .settings-page .settings-header p{margin-top:8px}
+
+
+/* Profile video management */
+.profile-manage-gear{position:absolute;right:18px;top:18px;width:42px;height:42px;border:1px solid #ffffff24;border-radius:14px;background:#17151fbd;color:#fff;display:grid;place-items:center;backdrop-filter:blur(16px);cursor:pointer}
+.profile-manage-gear:hover{background:#292532}
+.profile-manage-heading{padding:24px 25px 12px}
+.profile-manage-heading>button{border:0;background:none;color:#aaa;cursor:pointer;font:inherit}
+.profile-manage-heading h2{margin:16px 0 5px;font-size:24px}
+.profile-manage-heading p{margin:0;color:#999;font-size:13px}
+.profile-manage-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:12px 25px 28px}
+.profile-manage-card{min-width:0;padding:15px;border:1px solid #ffffff12;border-radius:18px;background:#ffffff05;display:grid;gap:12px}
+.profile-manage-video{display:flex;align-items:center;gap:12px;min-width:0}
+.profile-manage-video img{width:112px;aspect-ratio:16/9;object-fit:cover;border-radius:9px}
+.profile-manage-video b{font-size:14px;overflow-wrap:anywhere}
+.profile-manage-card label{display:grid;gap:6px;color:#aaa;font-size:12px}
+.profile-manage-card input,.profile-manage-card textarea{width:100%;box-sizing:border-box;border:1px solid #ffffff18;border-radius:11px;background:#100f16;color:#f5f3f8;padding:11px 12px;font:inherit;font-size:13px;outline:none}
+.profile-manage-card textarea{resize:vertical;min-height:76px}
+.profile-manage-actions{display:flex;gap:9px;flex-wrap:wrap}
+.profile-manage-actions button{border:1px solid #ffffff20;border-radius:11px;background:#292733;color:#fff;padding:10px 14px;cursor:pointer}
+.profile-manage-actions button:disabled{opacity:.55}
+.profile-manage-actions .profile-video-delete{color:#ff8c99;border-color:#ff8c9944;background:#ff8c9910}
+.profile-video-description{display:block!important;color:#aaa!important;font-size:12px!important;line-height:1.45!important;white-space:normal}
+.profile-video-tags{display:block!important;color:#c5a6f8!important;font-size:11px!important;line-height:1.4!important;white-space:normal}
+@media(max-width:760px){.profile-manage-list{grid-template-columns:1fr;padding:10px 15px 22px}.profile-manage-heading{padding:20px 15px 10px}.profile-manage-heading h2{font-size:20px}.profile-manage-gear{right:12px;top:12px;width:38px;height:38px}}
