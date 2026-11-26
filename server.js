@@ -269,7 +269,7 @@ app.get('/api/videos', requireDb, auth, async (req,res) => {
   const r=await pool.query(`SELECT id,owner_id,title,upload_id,asset_id,playback_id,status,duration,created_at,is_public,
     CASE WHEN cover IS NOT NULL THEN '/api/videos/'||id||'/cover' ELSE NULL END AS cover_url
     FROM videos WHERE owner_id=$1 AND playback_id IS NOT NULL AND status='ready' ORDER BY created_at DESC`,[req.user.id]);
-  res.json({videos:r.rows.map(v=>({...v,id:'db-'+v.id,ownerId:String(v.owner_id),isPublic:v.is_public,videoUrl:v.playback_id?'https://stream.mux.com/'+v.playback_id+'.m3u8':null,image:v.cover_url?'https://mirvex-api.onrender.com'+v.cover_url:'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',channel:'Мой канал',views:'Ваше видео',time:new Date(v.created_at).toLocaleDateString('ru-RU'),category:'Мои видео',avatar:'М'}))});
+  res.json({videos:r.rows.map(v=>({...v,id:'db-'+v.id,ownerId:String(v.owner_id),isPublic:v.is_public,videoUrl:v.playback_id?'https://stream.mux.com/'+v.playback_id+'.m3u8':null,image:v.cover_url?'https://mirvex-api.onrender.com'+v.cover_url:'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',channel:'Мой канал',views:'Ваше видео',time:new Date(v.created_at).toLocaleDateString('ru-RU'),category:'Мои видео',avatar:'М',avatarUrl:v.has_avatar?'https://mirvex-api.onrender.com/api/users/'+v.owner_id+'/avatar?v='+Date.now():'',avatarType:v.avatar_type||'',avatarPosition:(v.avatar_crop_x??50)+'% '+(v.avatar_crop_y??50)+'%'}))});
 });
 
 
