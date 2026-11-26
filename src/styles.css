@@ -895,3 +895,7 @@ body{background:radial-gradient(ellipse at 72% -18%,rgba(104,58,177,.16),transpa
   backdrop-filter:blur(24px) saturate(150%);
  }
 }
+
+
+/* Dedicated video route */
+.watch-page{position:fixed;inset:0;z-index:120;background:var(--bg,#09090d);overflow-y:auto;padding:18px clamp(14px,3vw,42px) 48px}.watch-page-top{max-width:1320px;margin:0 auto 14px}.watch-back{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border,rgba(255,255,255,.12));background:rgba(255,255,255,.05);color:inherit;border-radius:12px;padding:10px 14px;cursor:pointer}.watch-video-content{position:relative!important;inset:auto!important;transform:none!important;width:min(1320px,100%)!important;max-width:none!important;max-height:none!important;margin:0 auto;background:transparent!important;box-shadow:none!important;border:0!important;overflow:visible!important}.watch-video-content .modal-player{width:100%;border-radius:18px;overflow:hidden}.watch-video-content .modal-details{padding:22px 2px 40px}.watch-video-content .modal-close{display:none!important}@media(max-width:700px){.watch-page{padding:10px 12px 90px}.watch-video-content .modal-player{border-radius:12px}}
