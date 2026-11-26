@@ -1166,3 +1166,7 @@ img,video{max-width:100%}
 
 /* Direct-manipulation crop preview */
 .profile-crop-draggable{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}.profile-crop-draggable:active{cursor:grabbing}.profile-image-preview-banner.profile-crop-draggable{background-repeat:no-repeat}.profile-image-preview-banner.profile-crop-draggable span{pointer-events:none;padding:5px 8px;border-radius:8px;background:#09070db8;backdrop-filter:blur(8px);font-size:9px;letter-spacing:0;text-transform:none;color:#fff}.profile-image-preview-avatar.profile-crop-draggable img,.profile-image-preview-avatar.profile-crop-draggable video{pointer-events:none;object-position:var(--crop-x,50%) var(--crop-y,50%)}.profile-crop-hint{margin:12px 0 0;color:#a9a2b4;font-size:11px;line-height:1.5}
+
+
+/* Shared creator avatars across the interface */
+.avatar-media{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 50%;border-radius:inherit;flex:none}.profile-avatar .avatar-media{width:100%;height:100%}.account-settings-avatar .avatar-media,.search-result-avatar .avatar-media,.channel-avatar .avatar-media,.shorts-author .avatar-media{width:100%;height:100%;border-radius:inherit}.channel-avatar,.search-result-avatar,.shorts-author>span,.account-settings-avatar,.profile-avatar{overflow:hidden}
