@@ -1088,3 +1088,75 @@ img,video{max-width:100%}
 @media(max-width:760px){
   .profile-page .profile-video-settings{top:8px;right:8px;width:33px;height:33px;border-radius:11px}
 }
+
+
+/* Profile artwork editor and live previews */
+.profile-page .profile-cover{
+ position:relative;
+ background-size:cover;
+ background-position:center;
+ overflow:hidden;
+}
+.profile-page .profile-cover>span,.profile-page .profile-cover>strong{position:relative;z-index:1;text-shadow:0 2px 12px #000b}
+.profile-edit-appearance{
+ position:absolute;z-index:2;right:22px;top:20px;display:flex;align-items:center;gap:8px;
+ padding:10px 13px;border:1px solid #ffffff35;border-radius:12px;
+ color:#fff;background:rgba(18,16,25,.58);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+ font-size:11px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px #0004;
+}
+.profile-edit-appearance:hover{background:rgba(105,78,158,.78);border-color:#c5a5ff88}
+.profile-page .profile-large-avatar{overflow:hidden;padding:0;flex-shrink:0}
+.profile-page .profile-large-avatar img{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.profile-image-editor-backdrop{
+ position:fixed;inset:0;z-index:130;display:grid;place-items:center;padding:16px;
+ background:rgba(5,5,9,.78);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+}
+.profile-image-editor{
+ position:relative;width:min(540px,100%);max-height:min(90dvh,780px);overflow:auto;
+ padding:27px;border:1px solid #ffffff1b;border-radius:23px;
+ background:linear-gradient(150deg,#211a2b,#141319 70%);box-shadow:0 28px 90px #000b;
+}
+.profile-image-editor-close{position:absolute;right:17px;top:17px;width:36px;height:36px;display:grid;place-items:center;border-radius:11px;background:#ffffff0d;color:#fff}
+.profile-image-editor h2{font-size:23px;margin:8px 0}
+.profile-image-editor-hint{font-size:12px;line-height:1.6;color:#a6a1b0;margin:0 0 20px;max-width:420px}
+.profile-image-preview{
+ position:relative;min-height:190px;padding:0 18px 17px;display:flex;flex-direction:column;align-items:flex-start;
+ border:1px solid #ffffff18;border-radius:17px;overflow:hidden;background:#17141f;
+}
+.profile-image-preview-banner{
+ width:calc(100% + 36px);height:116px;margin:0 -18px 0;
+ background:radial-gradient(ellipse at 70% 20%,#70558f,#32253f 48%,#17141f);
+ background-position:center;background-size:cover;display:flex;align-items:flex-start;padding:12px 14px;
+}
+.profile-image-preview-banner span{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#ffffffb0;text-shadow:0 1px 6px #000}
+.profile-image-preview-avatar{
+ width:70px;height:70px;margin-top:-35px;z-index:1;display:grid;place-items:center;overflow:hidden;
+ border:4px solid #17141f;border-radius:22px;background:linear-gradient(145deg,#b78cf2,#513476);
+ color:#fff;font-size:25px;font-weight:800;
+}
+.profile-image-preview-avatar img{width:100%;height:100%;object-fit:cover}
+.profile-image-preview>b{font-size:14px;margin-top:7px}
+.profile-image-preview>small{font-size:10px;color:#9993a5;margin-top:3px}
+.profile-image-upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}
+.profile-image-upload{
+ position:relative;display:flex;align-items:center;gap:10px;min-width:0;padding:13px;
+ border:1px dashed #ffffff30;border-radius:13px;background:#ffffff06;color:#cbb5f5;cursor:pointer;
+}
+.profile-image-upload:hover{border-color:#b48bff;background:#b48bff0c}
+.profile-image-upload>span{display:flex;min-width:0;flex-direction:column;gap:4px}
+.profile-image-upload b{font-size:11px;color:#f2edf9}
+.profile-image-upload small{font-size:9px;color:#928b9c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.profile-image-upload input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.profile-image-editor-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}
+.profile-image-editor-actions button{padding:11px 15px;border-radius:11px;font-size:11px;font-weight:750}
+.profile-image-editor-actions .profile-image-cancel{background:#ffffff0d;color:#bdb8c7}
+.profile-image-editor-actions button:last-child{background:linear-gradient(135deg,#b58af5,#7950b7);color:white;box-shadow:0 7px 20px #8c5acb35}
+.profile-image-editor-actions button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:760px){
+ .profile-edit-appearance{right:12px;top:12px;padding:9px 10px;font-size:10px}
+ .profile-image-editor{padding:21px 16px;border-radius:19px}
+ .profile-image-editor h2{font-size:20px}
+ .profile-image-preview-banner{height:100px}
+ .profile-image-upload-grid{grid-template-columns:1fr}
+ .profile-image-editor-actions button{flex:1}
+}
