@@ -300,7 +300,7 @@ function ShortsFeed({items,onOpen,onProfile,onLike,token,user,onLogin}) {
     <button onClick={()=>onLike(v)} aria-label="Поставить лайк"><Heart size={23}/><b>{Number(v.likes||0).toLocaleString('ru-RU')}</b></button>
     <button className={commentsVideo?.id===v.id?'shorts-comment-active':''} onClick={()=>openComments(v)} aria-label="Комментарии"><MessageCircle size={23}/><b>{commentCount[v.id]??'Комментарии'}</b></button>
     <button onClick={()=>onProfile(v.ownerId)} aria-label="Открыть автора"><UserRound size={22}/><b>Автор</b></button>
-    <button onClick={async()=>{const url=window.location.origin+'/?video='+encodeURIComponent(v.id);try{if(navigator.share)await navigator.share({title:v.title,url});else if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(url);alert('Ссылка скопирована');}}catch{}}} aria-label="Поделиться"><ArrowUpRight size={22}/><b>Поделиться</b></button>{String(v.ownerId)!==String(user?.id)&&<button onClick={()=>user?setReportVideo(v):onLogin()} aria-label="Пожаловаться на Short"><Flag size={21}/><b>Пожаловаться</b></button>}
+    <button onClick={async()=>{const url=window.location.origin+'/watch/'+encodeURIComponent(v.id);try{if(navigator.share)await navigator.share({title:v.title,url});else if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(url);alert('Ссылка скопирована');}}catch{}}} aria-label="Поделиться"><ArrowUpRight size={22}/><b>Поделиться</b></button>{String(v.ownerId)!==String(user?.id)&&<button onClick={()=>user?setReportVideo(v):onLogin()} aria-label="Пожаловаться на Short"><Flag size={21}/><b>Пожаловаться</b></button>}
    </div>
   </article>)}
   {reportVideo&&<ReportDialog video={reportVideo} token={token} onClose={()=>setReportVideo(null)}/>}
@@ -311,6 +311,8 @@ function ShortsFeed({items,onOpen,onProfile,onLike,token,user,onLogin}) {
 const ROUTE_PATHS={'Главная':'/','В тренде':'/trending','Shorts':'/shorts','Подписки':'/subscriptions','Студия':'/studio','История':'/history','Смотреть позже':'/watch-later','Плейлисты':'/playlists','Избранное':'/favorites','Профиль':'/profile','Настройки':'/settings'};
 function readMirvexRoute(){
  let path=decodeURIComponent(window.location.pathname||'/');
+ const legacyVideo=new URLSearchParams(window.location.search).get('video');
+ if(path==='/'&&legacyVideo)path='/watch/'+encodeURIComponent(legacyVideo);
  while(path.length>1&&path.endsWith('/'))path=path.slice(0,-1);
  if(path==='/profile'||path.startsWith('/profile/'))return {page:'Профиль',profileId:path==='/profile'?null:path.slice('/profile/'.length),playlistId:null};
  if(path.startsWith('/watch/'))return {page:'Видео',profileId:null,playlistId:null,videoId:path.slice('/watch/'.length)};
