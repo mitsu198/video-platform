@@ -52,6 +52,10 @@ async function initDb() {
     ALTER TABLE videos ADD COLUMN IF NOT EXISTS is_short BOOLEAN NOT NULL DEFAULT FALSE;
     ALTER TABLE videos ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
     ALTER TABLE videos ADD COLUMN IF NOT EXISTS hashtags TEXT NOT NULL DEFAULT '';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar BYTEA;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_type TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS banner BYTEA;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS banner_type TEXT;
     CREATE INDEX IF NOT EXISTS videos_shorts_idx ON videos(is_short,is_public,status,created_at DESC);
     CREATE TABLE IF NOT EXISTS video_reactions (video_id BIGINT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,reaction TEXT NOT NULL CHECK(reaction IN ('like','dislike')),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(video_id,user_id));
     CREATE TABLE IF NOT EXISTS video_comments (id BIGSERIAL PRIMARY KEY,video_id BIGINT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,body TEXT NOT NULL CHECK(char_length(body) BETWEEN 1 AND 1000),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
@@ -275,7 +279,7 @@ app.post('/api/videos/:id/comments',requireDb,auth,async(req,res)=>{const id=num
 app.get('/api/users/:id/profile',requireDb,async(req,res)=>{
  const id=String(req.params.id);
  if(!/^\d+$/.test(id))return res.status(400).json({error:'Некорректный профиль'});
- const u=await pool.query('SELECT id,username,created_at FROM users WHERE id=$1',[id]);
+ const u=await pool.query('SELECT id,username,created_at,(avatar IS NOT NULL) AS has_avatar,(banner IS NOT NULL) AS has_banner FROM users WHERE id=$1',[id]);
  if(!u.rowCount)return res.status(404).json({error:'Профиль не найден'});
  let viewerId=null;
  try{const t=(req.headers.authorization||'').replace(/^Bearer\s+/i,'');if(t)viewerId=String(jwt.verify(t,JWT_SECRET).id);}catch{}
@@ -285,7 +289,21 @@ app.get('/api/users/:id/profile',requireDb,async(req,res)=>{
  ]);
  let isFollowing=false;
  if(viewerId&&viewerId!==id){const q=await pool.query('SELECT 1 FROM user_subscriptions WHERE follower_id=$1 AND followed_id=$2',[viewerId,id]);isFollowing=!!q.rowCount;}
- res.json({user:{id:String(u.rows[0].id),username:u.rows[0].username,createdAt:u.rows[0].created_at},...stats.rows[0],videoCount:Number(stats.rows[0].videos||0),isFollowing,videos:vids.rows.map(v=>({id:'db-'+v.id,title:v.title,description:v.description||'',hashtags:v.hashtags||'',ownerId:id,channel:u.rows[0].username,isPublic:v.is_public,image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',avatar:u.rows[0].username.slice(0,1).toUpperCase(),videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8'}))});
+ res.json({user:{id:String(u.rows[0].id),username:u.rows[0].username,createdAt:u.rows[0].created_at,avatarUrl:u.rows[0].has_avatar?'https://mirvex-api.onrender.com/api/users/'+id+'/avatar':'',bannerUrl:u.rows[0].has_banner?'https://mirvex-api.onrender.com/api/users/'+id+'/banner':''},...stats.rows[0],videoCount:Number(stats.rows[0].videos||0),isFollowing,videos:vids.rows.map(v=>({id:'db-'+v.id,title:v.title,description:v.description||'',hashtags:v.hashtags||'',ownerId:id,channel:u.rows[0].username,isPublic:v.is_public,image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',avatar:u.rows[0].username.slice(0,1).toUpperCase(),videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8'}))});
+});
+const profileImageColumns={avatar:['avatar','avatar_type'],banner:['banner','banner_type']};
+app.get('/api/users/:id/:imageType(avatar|banner)',requireDb,async(req,res)=>{
+ const columns=profileImageColumns[req.params.imageType];if(!columns||!/^\\d+$/.test(req.params.id))return res.status(404).end();
+ const r=await pool.query('SELECT '+columns[0]+','+columns[1]+' FROM users WHERE id=$1',[req.params.id]);
+ if(!r.rowCount||!r.rows[0][columns[0]])return res.status(404).end();
+ res.set('Content-Type',r.rows[0][columns[1]]||'image/jpeg').set('Cache-Control','public, max-age=3600').send(r.rows[0][columns[0]]);
+});
+app.post('/api/users/me/profile-image',requireDb,auth,uploadImage.single('image'),async(req,res)=>{
+ const columns=profileImageColumns[req.body?.kind];
+ if(!columns)return res.status(400).json({error:'Выбери аватар или баннер'});
+ if(!req.file)return res.status(400).json({error:'Выбери изображение'});
+ await pool.query('UPDATE users SET '+columns[0]+'=$1,'+columns[1]+'=$2 WHERE id=$3',[req.file.buffer,req.file.mimetype,req.user.id]);
+ res.json({kind:req.body.kind,url:'https://mirvex-api.onrender.com/api/users/'+req.user.id+'/'+req.body.kind+'?v='+Date.now()});
 });
 app.post('/api/users/:id/subscribe',requireDb,auth,async(req,res)=>{const id=String(req.params.id);if(!/^\d+$/.test(id)||String(req.user.id)===id)return res.status(400).json({error:'Нельзя подписаться на этот профиль'});const exists=await pool.query('SELECT id FROM users WHERE id=$1',[id]);if(!exists.rowCount)return res.status(404).json({error:'Профиль не найден'});const subscribed=req.body?.subscribed===true;if(subscribed){const inserted=await pool.query('INSERT INTO user_subscriptions(follower_id,followed_id) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING follower_id',[req.user.id,id]);if(inserted.rowCount)await pool.query("INSERT INTO notifications(user_id,actor_id,actor_name,kind) VALUES($1,$2,$3,'subscriber')",[id,req.user.id,req.user.username]);}else await pool.query('DELETE FROM user_subscriptions WHERE follower_id=$1 AND followed_id=$2',[req.user.id,id]);const count=await pool.query('SELECT COUNT(*)::int AS followers FROM user_subscriptions WHERE followed_id=$1',[id]);res.json({isFollowing:subscribed,followers:count.rows[0].followers});});
 
