@@ -918,7 +918,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .layout{min-height:calc(100vh - 76px);align-items:stretch}
 .sidebar{width:224px;flex:0 0 224px;top:76px;height:calc(100dvh - 76px)}
 .main{
-  width:calc(100% - 224px);min-width:0;max-width:1660px;
+  flex:1 1 0;width:auto;min-width:0;max-width:none;
   padding:clamp(22px,2.5vw,36px) var(--content-gutter) calc(80px + env(safe-area-inset-bottom));
 }
 .main>*{min-width:0}
