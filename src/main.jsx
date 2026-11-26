@@ -166,7 +166,7 @@ function SettingsPage({settings,onChange,user,onLogout}) {
  const sections=[['Внешний вид','◐'],['Воспроизведение','▷'],['Уведомления','♧'],['Конфиденциальность','◇'],['Аккаунт','○'],['Правила','§']];
  const update=(key,value)=>onChange({...settings,[key]:value});
  return <section className="settings-dialog settings-page page-transition">
-  <header className="settings-header"><div><div className="eyebrow">MIRVEX PERSONAL</div><h2>Настройки</h2><p>Настрой платформу под себя.</p></div></header>
+  <header className="settings-header"><div><h2>Настройки</h2><p>Настрой платформу под себя.</p></div></header>
   <div className="settings-body"><nav className="settings-tabs">{sections.map(([name,mark])=><button key={name} className={section===name?'current':''} onClick={()=>setSection(name)}><span>{mark}</span>{name}</button>)}</nav>
    <div className="settings-content">
     {section==='Внешний вид'&&<><div className="settings-section-title">Интерфейс</div>
