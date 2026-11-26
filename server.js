@@ -266,9 +266,9 @@ app.post('/api/videos/:id/publish', requireDb, auth, async (req,res) => {
 });
 
 app.get('/api/videos', requireDb, auth, async (req,res) => {
-  const r=await pool.query(`SELECT id,owner_id,title,upload_id,asset_id,playback_id,status,duration,created_at,is_public,
-    CASE WHEN cover IS NOT NULL THEN '/api/videos/'||id||'/cover' ELSE NULL END AS cover_url
-    FROM videos WHERE owner_id=$1 AND playback_id IS NOT NULL AND status='ready' ORDER BY created_at DESC`,[req.user.id]);
+  const r=await pool.query(`SELECT v.id,v.owner_id,v.title,v.upload_id,v.asset_id,v.playback_id,v.status,v.duration,v.created_at,v.is_public,
+    CASE WHEN v.cover IS NOT NULL THEN '/api/videos/'||v.id||'/cover' ELSE NULL END AS cover_url,u.avatar_type,u.avatar_crop_x,u.avatar_crop_y,(u.avatar IS NOT NULL) AS has_avatar
+    FROM videos v JOIN users u ON u.id=v.owner_id WHERE v.owner_id=$1 AND playback_id IS NOT NULL AND status='ready' ORDER BY created_at DESC`,[req.user.id]);
   res.json({videos:r.rows.map(v=>({...v,id:'db-'+v.id,ownerId:String(v.owner_id),isPublic:v.is_public,videoUrl:v.playback_id?'https://stream.mux.com/'+v.playback_id+'.m3u8':null,image:v.cover_url?'https://mirvex-api.onrender.com'+v.cover_url:'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',channel:'Мой канал',views:'Ваше видео',time:new Date(v.created_at).toLocaleDateString('ru-RU'),category:'Мои видео',avatar:'М',avatarUrl:v.has_avatar?'https://mirvex-api.onrender.com/api/users/'+v.owner_id+'/avatar?v='+Date.now():'',avatarType:v.avatar_type||'',avatarPosition:(v.avatar_crop_x??50)+'% '+(v.avatar_crop_y??50)+'%'}))});
 });
 
@@ -402,7 +402,7 @@ app.get('/api/admin/users',requireDb,auth,adminOnly,async(req,res)=>{
   res.json({users:r.rows.map(u=>({...u,id:String(u.id),isAdmin:isAdminEmail(u.email)})),total:r.rowCount});
 });
 app.get('/api/subscriptions/videos',requireDb,auth,async(req,res)=>{
-  const r=await pool.query(`SELECT v.id,v.owner_id,v.title,v.playback_id,v.duration,v.created_at,v.cover,u.username
+  const r=await pool.query(`SELECT v.id,v.owner_id,v.title,v.playback_id,v.duration,v.created_at,v.cover,u.username,u.avatar_type,u.avatar_crop_x,u.avatar_crop_y,(u.avatar IS NOT NULL) AS has_avatar
    FROM user_subscriptions s JOIN videos v ON v.owner_id=s.followed_id JOIN users u ON u.id=v.owner_id
    WHERE s.follower_id=$1 AND v.is_public=TRUE AND v.status='ready' AND v.playback_id IS NOT NULL
    ORDER BY v.created_at DESC LIMIT 100`,[req.user.id]);
@@ -428,7 +428,7 @@ app.post('/api/videos/:id/view',requireDb,auth,async(req,res)=>{
  res.json({views:count.rows[0].views});
 });
 app.get('/api/shorts',requireDb,async(_req,res)=>{
- const r=await pool.query(`SELECT v.id,v.owner_id,v.title,v.playback_id,v.duration,v.created_at,v.cover,u.username,
+ const r=await pool.query(`SELECT v.id,v.owner_id,v.title,v.playback_id,v.duration,v.created_at,v.cover,u.username,u.avatar_type,u.avatar_crop_x,u.avatar_crop_y,(u.avatar IS NOT NULL) AS has_avatar,
   (SELECT COUNT(*)::int FROM video_reactions vr WHERE vr.video_id=v.id AND vr.reaction='like') AS likes,
   (SELECT COUNT(*)::int FROM video_views vv WHERE vv.video_id=v.id) AS views
   FROM videos v JOIN users u ON u.id=v.owner_id
