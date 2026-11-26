@@ -442,7 +442,7 @@ app.get('/api/shorts',requireDb,async(_req,res)=>{
 });
 
 app.get('/api/trending/videos',requireDb,async(_req,res)=>{
- const r=await pool.query(`SELECT v.id,v.owner_id,v.title,v.playback_id,v.duration,v.created_at,v.cover,u.username,
+ const r=await pool.query(`SELECT v.id,v.owner_id,v.title,v.playback_id,v.duration,v.created_at,v.cover,u.username,u.avatar_type,u.avatar_crop_x,u.avatar_crop_y,(u.avatar IS NOT NULL) AS has_avatar,
   COUNT(DISTINCT vv.id) FILTER(WHERE vv.created_at>NOW()-INTERVAL '7 days')::int AS views,
   COUNT(DISTINCT vr.user_id) FILTER(WHERE vr.reaction='like')::int AS likes
   FROM videos v JOIN users u ON u.id=v.owner_id
