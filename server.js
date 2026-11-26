@@ -297,7 +297,7 @@ app.get('/api/users/:id/profile',requireDb,async(req,res)=>{
 });
 const profileImageColumns={avatar:['avatar','avatar_type'],banner:['banner','banner_type']};
 app.get('/api/users/:id/:imageType(avatar|banner)',requireDb,async(req,res)=>{
- const columns=profileImageColumns[req.params.imageType];if(!columns||!/^\\d+$/.test(req.params.id))return res.status(404).end();
+ const columns=profileImageColumns[req.params.imageType];if(!columns||!/^\d+$/.test(req.params.id))return res.status(404).end();
  const r=await pool.query('SELECT '+columns[0]+','+columns[1]+' FROM users WHERE id=$1',[req.params.id]);
  if(!r.rowCount||!r.rows[0][columns[0]])return res.status(404).end();
  res.set('Content-Type',r.rows[0][columns[1]]||'image/jpeg').set('Cache-Control','public, max-age=3600').send(r.rows[0][columns[0]]);
