@@ -72,14 +72,14 @@ function UploadDialog({ onClose, onUploaded, token }) {
  const [file,setFile]=useState(null);
  const [cover,setCover]=useState(null);
  const [title,setTitle]=useState('');
- const [isShort,setIsShort]=useState(false);
+ const [isShort,setIsShort]=useState(null);
  const [status,setStatus]=useState('idle');
  const [progress,setProgress]=useState(0);
  const [message,setMessage]=useState('');
  const chooseRef=useRef(null);
  const coverRef=useRef(null);
  async function upload() {
-  if (!file) return;
+  if (!file || isShort===null) return;
   setStatus('uploading'); setProgress(0); setMessage('Создаём защищённую ссылку...');
   try {
    const created=await fetch('https://mirvex-api.onrender.com/api/uploads',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({title:title||file.name,isShort})});
@@ -112,19 +112,21 @@ function UploadDialog({ onClose, onUploaded, token }) {
   } catch(e){setStatus('error');setMessage(e.message||'Не удалось загрузить видео');}
  }
  return <div className="upload-backdrop" onClick={onClose}><div className="upload-dialog" onClick={e=>e.stopPropagation()}>
-  <button className="modal-close" onClick={onClose}><X/></button><div className="eyebrow">MIRVEX STUDIO</div><h2>Загрузить видео</h2><p className="upload-hint">Выбери видео с устройства. Файл отправится напрямую в Mux.</p>
-  <label className="upload-field">Название видео<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Например, мой первый ролик"/></label>
-  <label className="upload-short-toggle"><input type="checkbox" checked={isShort} onChange={e=>setIsShort(e.target.checked)}/><span><b>Опубликовать как MIRVEX Short</b><small>Вертикальный ролик до 3 минут. После обработки он автоматически появится в Shorts для всех.</small></span></label>
+  <button className="modal-close" onClick={onClose}><X/></button><div className="eyebrow">MIRVEX STUDIO</div>
+  {isShort===null?<><h2>Что будем публиковать?</h2><p className="upload-hint">Сначала выбери формат публикации.</p><div className="upload-type-grid">
+   <button className="upload-type-card" onClick={()=>setIsShort(false)}><span className="upload-type-icon"><Film size={25}/></span><b>Обычное видео</b><small>Полноформатный ролик для общей ленты и твоего профиля</small></button>
+   <button className="upload-type-card" onClick={()=>setIsShort(true)}><span className="upload-type-icon"><PlaySquare size={25}/></span><b>Shorts</b><small>Короткий вертикальный ролик для отдельной ленты Shorts</small></button>
+  </div></>:<><button className="upload-back-choice" onClick={()=>{if(status!=='uploading'){setIsShort(null);setFile(null);setCover(null);setTitle('');setMessage('');setStatus('idle');}}} disabled={status==='uploading'}>← Изменить формат</button><h2>{isShort?'Загрузить Short':'Загрузить видео'}</h2><p className="upload-hint">{isShort?'Короткий ролик появится в ленте Shorts.':'Видео появится в общей ленте и твоём профиле.'} Выбери файл с устройства.</p>
+  <label className="upload-field">Название {isShort?'Short':'видео'}<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Например, мой первый ролик"/></label>
   <input ref={chooseRef} type="file" accept="video/*" hidden onChange={e=>setFile(e.target.files?.[0]||null)}/>
   <button className="file-picker" onClick={()=>chooseRef.current?.click()} disabled={status==='uploading'}><Film size={20}/><span>{file?file.name:'Выбрать видеофайл'}</span><small>{file?(file.size/1024/1024).toFixed(1)+' МБ':'MP4, MOV и другие форматы'}</small></button>
   <input ref={coverRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e=>setCover(e.target.files?.[0]||null)}/>
   <button className="file-picker cover-picker" onClick={()=>coverRef.current?.click()} disabled={status==='uploading'}>{cover?<img src={URL.createObjectURL(cover)} alt="Обложка"/>:<Film size={20}/>}<span>{cover?cover.name:'Выбрать обложку (превью)'}</span><small>JPG, PNG, WebP · до 5 МБ</small></button>
   {status==='uploading'&&<div className="upload-progress"><div><span>{message}</span><b>{progress}%</b></div><i><span style={{width:progress+'%'}}/></i></div>}
   {message&&status!=='uploading'&&<p className={'upload-message '+status}>{message}</p>}
-  <div className="upload-actions"><button className="upload-cancel" onClick={onClose}>Закрыть</button><button className="upload-submit" disabled={!file||status==='uploading'||status==='done'} onClick={upload}>{status==='uploading'?'Загрузка...':status==='done'?'Готово':'Загрузить видео'}</button></div>
+  <div className="upload-actions"><button className="upload-cancel" onClick={onClose}>Закрыть</button><button className="upload-submit" disabled={!file||status==='uploading'||status==='done'} onClick={upload}>{status==='uploading'?'Загрузка...':status==='done'?'Готово':isShort?'Опубликовать Short':'Загрузить видео'}</button></div></>}
  </div></div>;
 }
-
 
 function AuthDialog({onClose,onAuth}) {
  const [mode,setMode]=useState('login'),[email,setEmail]=useState(''),[username,setUsername]=useState(''),[password,setPassword]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
