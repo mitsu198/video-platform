@@ -142,7 +142,7 @@ app.post('/api/auth/login', requireDb, async (req,res) => {
 app.get('/api/auth/me', requireDb, auth, async (req,res) => {
   const r=await pool.query('SELECT id,email,username,avatar_type,avatar_crop_x,avatar_crop_y,(avatar IS NOT NULL) AS has_avatar FROM users WHERE id=$1',[req.user.id]);
   if(!r.rowCount) return res.status(401).json({error:'Аккаунт не найден'});
-  res.json({user:{...r.rows[0],avatarUrl:r.rows[0].has_avatar?'https://mirvex-api.onrender.com/api/users/'+r.rows[0].id+'/avatar':'',avatarType:r.rows[0].avatar_type||'',avatarPosition:(r.rows[0].avatar_crop_x??50)+'% '+(r.rows[0].avatar_crop_y??50)+'%',isAdmin:isAdminEmail(r.rows[0].email)}});
+  res.json({user:{...r.rows[0],avatarUrl:r.rows[0].has_avatar?'https://mirvex-api.onrender.com/api/users/'+r.rows[0].id+'/avatar?v='+Date.now():'',avatarType:r.rows[0].avatar_type||'',avatarPosition:(r.rows[0].avatar_crop_x??50)+'% '+(r.rows[0].avatar_crop_y??50)+'%',isAdmin:isAdminEmail(r.rows[0].email)}});
 });
 
 app.post('/api/uploads', requireDb, auth, async (req,res) => {
@@ -207,10 +207,10 @@ app.get('/api/search', requireDb, async (req,res) => {
       views:'Публичное видео',time:new Date(v.created_at).toLocaleDateString('ru-RU'),
       duration:v.duration?new Date(v.duration*1000).toISOString().slice(14,19):'',
       image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',
-      avatar:(v.username||'M').slice(0,1).toUpperCase(),avatarUrl:v.has_avatar?'https://mirvex-api.onrender.com/api/users/'+v.owner_id+'/avatar':'',avatarType:v.avatar_type||'',avatarPosition:(v.avatar_crop_x??50)+'% '+(v.avatar_crop_y??50)+'%',category:'Для вас',
+      avatar:(v.username||'M').slice(0,1).toUpperCase(),avatarUrl:v.has_avatar?'https://mirvex-api.onrender.com/api/users/'+v.owner_id+'/avatar?v='+Date.now():'',avatarType:v.avatar_type||'',avatarPosition:(v.avatar_crop_x??50)+'% '+(v.avatar_crop_y??50)+'%',category:'Для вас',
       videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8',isPublic:true
     })),
-    users:users.rows.map(u=>({id:String(u.id),username:u.username,avatarUrl:u.has_avatar?'https://mirvex-api.onrender.com/api/users/'+u.id+'/avatar':'',avatarType:u.avatar_type||'',avatarPosition:(u.avatar_crop_x??50)+'% '+(u.avatar_crop_y??50)+'%'}))
+    users:users.rows.map(u=>({id:String(u.id),username:u.username,avatarUrl:u.has_avatar?'https://mirvex-api.onrender.com/api/users/'+u.id+'/avatar?v='+Date.now():'',avatarType:u.avatar_type||'',avatarPosition:(u.avatar_crop_x??50)+'% '+(u.avatar_crop_y??50)+'%'}))
   });
 });
 app.get('/api/public/videos', requireDb, async (_req,res) => {
@@ -224,7 +224,7 @@ app.get('/api/public/videos', requireDb, async (_req,res) => {
     views:'Публичное видео', time:new Date(v.created_at).toLocaleDateString('ru-RU'),
     duration:v.duration?new Date(v.duration*1000).toISOString().slice(14,19):'',
     image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',
-    avatar:(v.username||'M').slice(0,1).toUpperCase(),avatarUrl:v.has_avatar?'https://mirvex-api.onrender.com/api/users/'+v.owner_id+'/avatar':'',avatarType:v.avatar_type||'',avatarPosition:(v.avatar_crop_x??50)+'% '+(v.avatar_crop_y??50)+'%', category:'Для вас',
+    avatar:(v.username||'M').slice(0,1).toUpperCase(),avatarUrl:v.has_avatar?'https://mirvex-api.onrender.com/api/users/'+v.owner_id+'/avatar?v='+Date.now():'',avatarType:v.avatar_type||'',avatarPosition:(v.avatar_crop_x??50)+'% '+(v.avatar_crop_y??50)+'%', category:'Для вас',
     videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8', isPublic:true
   }))});
 });
@@ -293,7 +293,7 @@ app.get('/api/users/:id/profile',requireDb,async(req,res)=>{
  ]);
  let isFollowing=false;
  if(viewerId&&viewerId!==id){const q=await pool.query('SELECT 1 FROM user_subscriptions WHERE follower_id=$1 AND followed_id=$2',[viewerId,id]);isFollowing=!!q.rowCount;}
- res.json({user:{id:String(u.rows[0].id),username:u.rows[0].username,createdAt:u.rows[0].created_at,avatarUrl:u.rows[0].has_avatar?'https://mirvex-api.onrender.com/api/users/'+id+'/avatar?v='+Date.now():'',avatarType:u.rows[0].avatar_type||'',avatarPosition:(u.rows[0].avatar_crop_x??50)+'% '+(u.rows[0].avatar_crop_y??50)+'%',bannerUrl:u.rows[0].has_banner?'https://mirvex-api.onrender.com/api/users/'+id+'/banner?v='+Date.now():'',bannerPosition:(u.rows[0].banner_crop_x??50)+'% '+(u.rows[0].banner_crop_y??50)+'%'},...stats.rows[0],videoCount:Number(stats.rows[0].videos||0),isFollowing,videos:vids.rows.map(v=>({id:'db-'+v.id,title:v.title,description:v.description||'',hashtags:v.hashtags||'',ownerId:id,channel:u.rows[0].username,isPublic:v.is_public,image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',avatar:u.rows[0].username.slice(0,1).toUpperCase(),avatarUrl:u.rows[0].has_avatar?'https://mirvex-api.onrender.com/api/users/'+id+'/avatar':'',avatarType:u.rows[0].avatar_type||'',avatarPosition:(u.rows[0].avatar_crop_x??50)+'% '+(u.rows[0].avatar_crop_y??50)+'%',videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8'}))});
+ res.json({user:{id:String(u.rows[0].id),username:u.rows[0].username,createdAt:u.rows[0].created_at,avatarUrl:u.rows[0].has_avatar?'https://mirvex-api.onrender.com/api/users/'+id+'/avatar?v='+Date.now():'',avatarType:u.rows[0].avatar_type||'',avatarPosition:(u.rows[0].avatar_crop_x??50)+'% '+(u.rows[0].avatar_crop_y??50)+'%',bannerUrl:u.rows[0].has_banner?'https://mirvex-api.onrender.com/api/users/'+id+'/banner?v='+Date.now():'',bannerPosition:(u.rows[0].banner_crop_x??50)+'% '+(u.rows[0].banner_crop_y??50)+'%'},...stats.rows[0],videoCount:Number(stats.rows[0].videos||0),isFollowing,videos:vids.rows.map(v=>({id:'db-'+v.id,title:v.title,description:v.description||'',hashtags:v.hashtags||'',ownerId:id,channel:u.rows[0].username,isPublic:v.is_public,image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',avatar:u.rows[0].username.slice(0,1).toUpperCase(),avatarUrl:u.rows[0].has_avatar?'https://mirvex-api.onrender.com/api/users/'+id+'/avatar?v='+Date.now():'',avatarType:u.rows[0].avatar_type||'',avatarPosition:(u.rows[0].avatar_crop_x??50)+'% '+(u.rows[0].avatar_crop_y??50)+'%',videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8'}))});
 });
 const profileImageColumns={avatar:['avatar','avatar_type'],banner:['banner','banner_type']};
 app.get('/api/users/:id/:imageType(avatar|banner)',requireDb,async(req,res)=>{
@@ -315,7 +315,7 @@ app.post('/api/users/:id/subscribe',requireDb,auth,async(req,res)=>{const id=Str
 
 app.get('/api/library/favorites',requireDb,auth,async(req,res)=>{
  const r=await pool.query("SELECT v.id,v.owner_id,v.title,v.playback_id,v.duration,v.created_at,v.cover,v.is_public,u.username,u.avatar_type,u.avatar_crop_x,u.avatar_crop_y,(u.avatar IS NOT NULL) AS has_avatar FROM video_favorites f JOIN videos v ON v.id=f.video_id JOIN users u ON u.id=v.owner_id WHERE f.user_id=$1 AND v.status='ready' AND v.playback_id IS NOT NULL ORDER BY f.created_at DESC",[req.user.id]);
- res.json({videos:r.rows.map(v=>({id:'db-'+v.id,ownerId:String(v.owner_id),title:v.title,channel:v.username,views:'В избранном',time:new Date(v.created_at).toLocaleDateString('ru-RU'),duration:v.duration?new Date(v.duration*1000).toISOString().slice(14,19):'',image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',avatar:(v.username||'M').slice(0,1).toUpperCase(),avatarUrl:v.has_avatar?'https://mirvex-api.onrender.com/api/users/'+v.owner_id+'/avatar':'',avatarType:v.avatar_type||'',avatarPosition:(v.avatar_crop_x??50)+'% '+(v.avatar_crop_y??50)+'%',videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8',isPublic:v.is_public}))});
+ res.json({videos:r.rows.map(v=>({id:'db-'+v.id,ownerId:String(v.owner_id),title:v.title,channel:v.username,views:'В избранном',time:new Date(v.created_at).toLocaleDateString('ru-RU'),duration:v.duration?new Date(v.duration*1000).toISOString().slice(14,19):'',image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',avatar:(v.username||'M').slice(0,1).toUpperCase(),avatarUrl:v.has_avatar?'https://mirvex-api.onrender.com/api/users/'+v.owner_id+'/avatar?v='+Date.now():'',avatarType:v.avatar_type||'',avatarPosition:(v.avatar_crop_x??50)+'% '+(v.avatar_crop_y??50)+'%',videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8',isPublic:v.is_public}))});
 });
 app.post('/api/videos/:id/favorite',requireDb,auth,async(req,res)=>{
  const id=numericVideoId(req.params.id),favorite=req.body?.favorite;
@@ -329,7 +329,7 @@ app.post('/api/videos/:id/favorite',requireDb,auth,async(req,res)=>{
 app.get('/api/library/playlists',requireDb,auth,async(req,res)=>{
  const p=await pool.query('SELECT id,title,created_at FROM playlists WHERE user_id=$1 ORDER BY created_at DESC',[req.user.id]);
  const v=await pool.query("SELECT pv.playlist_id,v.id,v.owner_id,v.title,v.playback_id,v.duration,v.created_at,v.cover,v.is_public,u.username,u.avatar_type,u.avatar_crop_x,u.avatar_crop_y,(u.avatar IS NOT NULL) AS has_avatar FROM playlist_videos pv JOIN videos v ON v.id=pv.video_id JOIN users u ON u.id=v.owner_id JOIN playlists p ON p.id=pv.playlist_id WHERE p.user_id=$1 AND v.status='ready' ORDER BY pv.added_at DESC",[req.user.id]);
- const videos=v.rows.map(x=>({id:'db-'+x.id,ownerId:String(x.owner_id),title:x.title,channel:x.username,views:'В плейлисте',time:new Date(x.created_at).toLocaleDateString('ru-RU'),duration:x.duration?new Date(x.duration*1000).toISOString().slice(14,19):'',image:x.cover?'https://mirvex-api.onrender.com/api/videos/'+x.id+'/cover':'https://image.mux.com/'+x.playback_id+'/thumbnail.jpg?width=900',avatar:(x.username||'M').slice(0,1).toUpperCase(),avatarUrl:x.has_avatar?'https://mirvex-api.onrender.com/api/users/'+x.owner_id+'/avatar':'',avatarType:x.avatar_type||'',avatarPosition:(x.avatar_crop_x??50)+'% '+(x.avatar_crop_y??50)+'%',videoUrl:'https://stream.mux.com/'+x.playback_id+'.m3u8',isPublic:x.is_public}));
+ const videos=v.rows.map(x=>({id:'db-'+x.id,ownerId:String(x.owner_id),title:x.title,channel:x.username,views:'В плейлисте',time:new Date(x.created_at).toLocaleDateString('ru-RU'),duration:x.duration?new Date(x.duration*1000).toISOString().slice(14,19):'',image:x.cover?'https://mirvex-api.onrender.com/api/videos/'+x.id+'/cover':'https://image.mux.com/'+x.playback_id+'/thumbnail.jpg?width=900',avatar:(x.username||'M').slice(0,1).toUpperCase(),avatarUrl:x.has_avatar?'https://mirvex-api.onrender.com/api/users/'+x.owner_id+'/avatar?v='+Date.now():'',avatarType:x.avatar_type||'',avatarPosition:(x.avatar_crop_x??50)+'% '+(x.avatar_crop_y??50)+'%',videoUrl:'https://stream.mux.com/'+x.playback_id+'.m3u8',isPublic:x.is_public}));
  res.json({playlists:p.rows.map(x=>({id:String(x.id),title:x.title,createdAt:x.created_at,videos:v.rows.filter(vv=>String(vv.playlist_id)===String(x.id)).map(vv=>videos.find(z=>z.id==='db-'+vv.id))}))});
 });
 app.post('/api/library/playlists',requireDb,auth,async(req,res)=>{
@@ -406,7 +406,7 @@ app.get('/api/subscriptions/videos',requireDb,auth,async(req,res)=>{
    FROM user_subscriptions s JOIN videos v ON v.owner_id=s.followed_id JOIN users u ON u.id=v.owner_id
    WHERE s.follower_id=$1 AND v.is_public=TRUE AND v.status='ready' AND v.playback_id IS NOT NULL
    ORDER BY v.created_at DESC LIMIT 100`,[req.user.id]);
-  res.json({videos:r.rows.map(v=>({id:'db-'+v.id,ownerId:String(v.owner_id),title:v.title,channel:v.username,views:'Видео канала',time:new Date(v.created_at).toLocaleDateString('ru-RU'),duration:v.duration?new Date(v.duration*1000).toISOString().slice(14,19):'',image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',avatar:(v.username||'M').slice(0,1).toUpperCase(),avatarUrl:v.has_avatar?'https://mirvex-api.onrender.com/api/users/'+v.owner_id+'/avatar':'',avatarType:v.avatar_type||'',avatarPosition:(v.avatar_crop_x??50)+'% '+(v.avatar_crop_y??50)+'%',videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8',isPublic:true}))});
+  res.json({videos:r.rows.map(v=>({id:'db-'+v.id,ownerId:String(v.owner_id),title:v.title,channel:v.username,views:'Видео канала',time:new Date(v.created_at).toLocaleDateString('ru-RU'),duration:v.duration?new Date(v.duration*1000).toISOString().slice(14,19):'',image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',avatar:(v.username||'M').slice(0,1).toUpperCase(),avatarUrl:v.has_avatar?'https://mirvex-api.onrender.com/api/users/'+v.owner_id+'/avatar?v='+Date.now():'',avatarType:v.avatar_type||'',avatarPosition:(v.avatar_crop_x??50)+'% '+(v.avatar_crop_y??50)+'%',videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8',isPublic:true}))});
 });
 app.delete('/api/admin/videos/:id',requireDb,auth,adminOnly,async(req,res)=>{
  const id=numericVideoId(req.params.id);if(!id)return res.status(400).json({error:'Некорректное видео'});
@@ -437,7 +437,7 @@ app.get('/api/shorts',requireDb,async(_req,res)=>{
  res.json({videos:r.rows.map(v=>({id:'db-'+v.id,ownerId:String(v.owner_id),title:v.title,channel:v.username,
   views:Number(v.views||0),likes:Number(v.likes||0),time:new Date(v.created_at).toLocaleDateString('ru-RU'),
   duration:v.duration||0,image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=720',
-  avatar:(v.username||'M').slice(0,1).toUpperCase(),avatarUrl:v.has_avatar?'https://mirvex-api.onrender.com/api/users/'+v.owner_id+'/avatar':'',avatarType:v.avatar_type||'',avatarPosition:(v.avatar_crop_x??50)+'% '+(v.avatar_crop_y??50)+'%',videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8',isPublic:true,isShort:true
+  avatar:(v.username||'M').slice(0,1).toUpperCase(),avatarUrl:v.has_avatar?'https://mirvex-api.onrender.com/api/users/'+v.owner_id+'/avatar?v='+Date.now():'',avatarType:v.avatar_type||'',avatarPosition:(v.avatar_crop_x??50)+'% '+(v.avatar_crop_y??50)+'%',videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8',isPublic:true,isShort:true
  }))});
 });
 
@@ -450,7 +450,7 @@ app.get('/api/trending/videos',requireDb,async(_req,res)=>{
   LEFT JOIN video_reactions vr ON vr.video_id=v.id
   WHERE v.is_public=TRUE AND v.status='ready' AND v.playback_id IS NOT NULL
   GROUP BY v.id,u.username,u.avatar_type,u.avatar_crop_x,u.avatar_crop_y,u.avatar ORDER BY (COUNT(DISTINCT vv.id) FILTER(WHERE vv.created_at>NOW()-INTERVAL '7 days')*2+COUNT(DISTINCT vr.user_id) FILTER(WHERE vr.reaction='like')) DESC,v.created_at DESC LIMIT 100`);
- res.json({videos:r.rows.map(v=>({id:'db-'+v.id,ownerId:String(v.owner_id),title:v.title,channel:v.username,views:Number(v.views||0)+' просмотров за 7 дней',viewCount:Number(v.views||0),likes:Number(v.likes||0),time:new Date(v.created_at).toLocaleDateString('ru-RU'),duration:v.duration?new Date(v.duration*1000).toISOString().slice(14,19):'',image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',avatar:(v.username||'M').slice(0,1).toUpperCase(),avatarUrl:v.has_avatar?'https://mirvex-api.onrender.com/api/users/'+v.owner_id+'/avatar':'',avatarType:v.avatar_type||'',avatarPosition:(v.avatar_crop_x??50)+'% '+(v.avatar_crop_y??50)+'%',videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8',isPublic:true}))});
+ res.json({videos:r.rows.map(v=>({id:'db-'+v.id,ownerId:String(v.owner_id),title:v.title,channel:v.username,views:Number(v.views||0)+' просмотров за 7 дней',viewCount:Number(v.views||0),likes:Number(v.likes||0),time:new Date(v.created_at).toLocaleDateString('ru-RU'),duration:v.duration?new Date(v.duration*1000).toISOString().slice(14,19):'',image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',avatar:(v.username||'M').slice(0,1).toUpperCase(),avatarUrl:v.has_avatar?'https://mirvex-api.onrender.com/api/users/'+v.owner_id+'/avatar?v='+Date.now():'',avatarType:v.avatar_type||'',avatarPosition:(v.avatar_crop_x??50)+'% '+(v.avatar_crop_y??50)+'%',videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8',isPublic:true}))});
 });
 app.get('/api/studio/overview',requireDb,auth,async(req,res)=>{
  const [totals,daily,videos]=await Promise.all([
