@@ -198,7 +198,7 @@ app.get('/api/search', requireDb, async (req,res) => {
       WHERE v.is_public=TRUE AND v.status='ready' AND v.playback_id IS NOT NULL
         AND (v.title ILIKE $1 OR u.username ILIKE $1)
       ORDER BY CASE WHEN v.title ILIKE $2 THEN 0 ELSE 1 END,v.created_at DESC LIMIT 12`,[pattern,q+'%']),
-    pool.query(`SELECT id,username FROM users WHERE username ILIKE $1
+    pool.query(`SELECT id,username,avatar_type,avatar_crop_x,avatar_crop_y,(avatar IS NOT NULL) AS has_avatar FROM users WHERE username ILIKE $1
       ORDER BY CASE WHEN username ILIKE $2 THEN 0 ELSE 1 END,username LIMIT 8`,[pattern,q+'%'])
   ]);
   res.json({
@@ -210,7 +210,7 @@ app.get('/api/search', requireDb, async (req,res) => {
       avatar:(v.username||'M').slice(0,1).toUpperCase(),avatarUrl:v.has_avatar?'https://mirvex-api.onrender.com/api/users/'+v.owner_id+'/avatar':'',avatarType:v.avatar_type||'',avatarPosition:(v.avatar_crop_x??50)+'% '+(v.avatar_crop_y??50)+'%',category:'Для вас',
       videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8',isPublic:true
     })),
-    users:users.rows.map(u=>({id:String(u.id),username:u.username}))
+    users:users.rows.map(u=>({id:String(u.id),username:u.username,avatarUrl:u.has_avatar?'https://mirvex-api.onrender.com/api/users/'+u.id+'/avatar':'',avatarType:u.avatar_type||'',avatarPosition:(u.avatar_crop_x??50)+'% '+(u.avatar_crop_y??50)+'%'}))
   });
 });
 app.get('/api/public/videos', requireDb, async (_req,res) => {
@@ -293,7 +293,7 @@ app.get('/api/users/:id/profile',requireDb,async(req,res)=>{
  ]);
  let isFollowing=false;
  if(viewerId&&viewerId!==id){const q=await pool.query('SELECT 1 FROM user_subscriptions WHERE follower_id=$1 AND followed_id=$2',[viewerId,id]);isFollowing=!!q.rowCount;}
- res.json({user:{id:String(u.rows[0].id),username:u.rows[0].username,createdAt:u.rows[0].created_at,avatarUrl:u.rows[0].has_avatar?'https://mirvex-api.onrender.com/api/users/'+id+'/avatar?v='+Date.now():'',avatarType:u.rows[0].avatar_type||'',avatarPosition:(u.rows[0].avatar_crop_x??50)+'% '+(u.rows[0].avatar_crop_y??50)+'%',bannerUrl:u.rows[0].has_banner?'https://mirvex-api.onrender.com/api/users/'+id+'/banner?v='+Date.now():'',bannerPosition:(u.rows[0].banner_crop_x??50)+'% '+(u.rows[0].banner_crop_y??50)+'%'},...stats.rows[0],videoCount:Number(stats.rows[0].videos||0),isFollowing,videos:vids.rows.map(v=>({id:'db-'+v.id,title:v.title,description:v.description||'',hashtags:v.hashtags||'',ownerId:id,channel:u.rows[0].username,isPublic:v.is_public,image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',avatar:u.rows[0].username.slice(0,1).toUpperCase(),videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8'}))});
+ res.json({user:{id:String(u.rows[0].id),username:u.rows[0].username,createdAt:u.rows[0].created_at,avatarUrl:u.rows[0].has_avatar?'https://mirvex-api.onrender.com/api/users/'+id+'/avatar?v='+Date.now():'',avatarType:u.rows[0].avatar_type||'',avatarPosition:(u.rows[0].avatar_crop_x??50)+'% '+(u.rows[0].avatar_crop_y??50)+'%',bannerUrl:u.rows[0].has_banner?'https://mirvex-api.onrender.com/api/users/'+id+'/banner?v='+Date.now():'',bannerPosition:(u.rows[0].banner_crop_x??50)+'% '+(u.rows[0].banner_crop_y??50)+'%'},...stats.rows[0],videoCount:Number(stats.rows[0].videos||0),isFollowing,videos:vids.rows.map(v=>({id:'db-'+v.id,title:v.title,description:v.description||'',hashtags:v.hashtags||'',ownerId:id,channel:u.rows[0].username,isPublic:v.is_public,image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',avatar:u.rows[0].username.slice(0,1).toUpperCase(),avatarUrl:u.rows[0].has_avatar?'https://mirvex-api.onrender.com/api/users/'+id+'/avatar':'',avatarType:u.rows[0].avatar_type||'',avatarPosition:(u.rows[0].avatar_crop_x??50)+'% '+(u.rows[0].avatar_crop_y??50)+'%',videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8'}))});
 });
 const profileImageColumns={avatar:['avatar','avatar_type'],banner:['banner','banner_type']};
 app.get('/api/users/:id/:imageType(avatar|banner)',requireDb,async(req,res)=>{
@@ -314,7 +314,7 @@ app.post('/api/users/me/profile-image',requireDb,auth,uploadImage.single('image'
 app.post('/api/users/:id/subscribe',requireDb,auth,async(req,res)=>{const id=String(req.params.id);if(!/^\d+$/.test(id)||String(req.user.id)===id)return res.status(400).json({error:'Нельзя подписаться на этот профиль'});const exists=await pool.query('SELECT id FROM users WHERE id=$1',[id]);if(!exists.rowCount)return res.status(404).json({error:'Профиль не найден'});const subscribed=req.body?.subscribed===true;if(subscribed){const inserted=await pool.query('INSERT INTO user_subscriptions(follower_id,followed_id) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING follower_id',[req.user.id,id]);if(inserted.rowCount)await pool.query("INSERT INTO notifications(user_id,actor_id,actor_name,kind) VALUES($1,$2,$3,'subscriber')",[id,req.user.id,req.user.username]);}else await pool.query('DELETE FROM user_subscriptions WHERE follower_id=$1 AND followed_id=$2',[req.user.id,id]);const count=await pool.query('SELECT COUNT(*)::int AS followers FROM user_subscriptions WHERE followed_id=$1',[id]);res.json({isFollowing:subscribed,followers:count.rows[0].followers});});
 
 app.get('/api/library/favorites',requireDb,auth,async(req,res)=>{
- const r=await pool.query("SELECT v.id,v.owner_id,v.title,v.playback_id,v.duration,v.created_at,v.cover,v.is_public,u.username FROM video_favorites f JOIN videos v ON v.id=f.video_id JOIN users u ON u.id=v.owner_id WHERE f.user_id=$1 AND v.status='ready' AND v.playback_id IS NOT NULL ORDER BY f.created_at DESC",[req.user.id]);
+ const r=await pool.query("SELECT v.id,v.owner_id,v.title,v.playback_id,v.duration,v.created_at,v.cover,v.is_public,u.username,u.avatar_type,u.avatar_crop_x,u.avatar_crop_y,(u.avatar IS NOT NULL) AS has_avatar FROM video_favorites f JOIN videos v ON v.id=f.video_id JOIN users u ON u.id=v.owner_id WHERE f.user_id=$1 AND v.status='ready' AND v.playback_id IS NOT NULL ORDER BY f.created_at DESC",[req.user.id]);
  res.json({videos:r.rows.map(v=>({id:'db-'+v.id,ownerId:String(v.owner_id),title:v.title,channel:v.username,views:'В избранном',time:new Date(v.created_at).toLocaleDateString('ru-RU'),duration:v.duration?new Date(v.duration*1000).toISOString().slice(14,19):'',image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',avatar:(v.username||'M').slice(0,1).toUpperCase(),avatarUrl:v.has_avatar?'https://mirvex-api.onrender.com/api/users/'+v.owner_id+'/avatar':'',avatarType:v.avatar_type||'',avatarPosition:(v.avatar_crop_x??50)+'% '+(v.avatar_crop_y??50)+'%',videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8',isPublic:v.is_public}))});
 });
 app.post('/api/videos/:id/favorite',requireDb,auth,async(req,res)=>{
@@ -328,7 +328,7 @@ app.post('/api/videos/:id/favorite',requireDb,auth,async(req,res)=>{
 });
 app.get('/api/library/playlists',requireDb,auth,async(req,res)=>{
  const p=await pool.query('SELECT id,title,created_at FROM playlists WHERE user_id=$1 ORDER BY created_at DESC',[req.user.id]);
- const v=await pool.query("SELECT pv.playlist_id,v.id,v.owner_id,v.title,v.playback_id,v.duration,v.created_at,v.cover,v.is_public,u.username FROM playlist_videos pv JOIN videos v ON v.id=pv.video_id JOIN users u ON u.id=v.owner_id JOIN playlists p ON p.id=pv.playlist_id WHERE p.user_id=$1 AND v.status='ready' ORDER BY pv.added_at DESC",[req.user.id]);
+ const v=await pool.query("SELECT pv.playlist_id,v.id,v.owner_id,v.title,v.playback_id,v.duration,v.created_at,v.cover,v.is_public,u.username,u.avatar_type,u.avatar_crop_x,u.avatar_crop_y,(u.avatar IS NOT NULL) AS has_avatar FROM playlist_videos pv JOIN videos v ON v.id=pv.video_id JOIN users u ON u.id=v.owner_id JOIN playlists p ON p.id=pv.playlist_id WHERE p.user_id=$1 AND v.status='ready' ORDER BY pv.added_at DESC",[req.user.id]);
  const videos=v.rows.map(x=>({id:'db-'+x.id,ownerId:String(x.owner_id),title:x.title,channel:x.username,views:'В плейлисте',time:new Date(x.created_at).toLocaleDateString('ru-RU'),duration:x.duration?new Date(x.duration*1000).toISOString().slice(14,19):'',image:x.cover?'https://mirvex-api.onrender.com/api/videos/'+x.id+'/cover':'https://image.mux.com/'+x.playback_id+'/thumbnail.jpg?width=900',avatar:(x.username||'M').slice(0,1).toUpperCase(),avatarUrl:x.has_avatar?'https://mirvex-api.onrender.com/api/users/'+x.owner_id+'/avatar':'',avatarType:x.avatar_type||'',avatarPosition:(x.avatar_crop_x??50)+'% '+(x.avatar_crop_y??50)+'%',videoUrl:'https://stream.mux.com/'+x.playback_id+'.m3u8',isPublic:x.is_public}));
  res.json({playlists:p.rows.map(x=>({id:String(x.id),title:x.title,createdAt:x.created_at,videos:v.rows.filter(vv=>String(vv.playlist_id)===String(x.id)).map(vv=>videos.find(z=>z.id==='db-'+vv.id))}))});
 });
@@ -449,7 +449,7 @@ app.get('/api/trending/videos',requireDb,async(_req,res)=>{
   LEFT JOIN video_views vv ON vv.video_id=v.id
   LEFT JOIN video_reactions vr ON vr.video_id=v.id
   WHERE v.is_public=TRUE AND v.status='ready' AND v.playback_id IS NOT NULL
-  GROUP BY v.id,u.username ORDER BY (COUNT(DISTINCT vv.id) FILTER(WHERE vv.created_at>NOW()-INTERVAL '7 days')*2+COUNT(DISTINCT vr.user_id) FILTER(WHERE vr.reaction='like')) DESC,v.created_at DESC LIMIT 100`);
+  GROUP BY v.id,u.username,u.avatar_type,u.avatar_crop_x,u.avatar_crop_y,u.avatar ORDER BY (COUNT(DISTINCT vv.id) FILTER(WHERE vv.created_at>NOW()-INTERVAL '7 days')*2+COUNT(DISTINCT vr.user_id) FILTER(WHERE vr.reaction='like')) DESC,v.created_at DESC LIMIT 100`);
  res.json({videos:r.rows.map(v=>({id:'db-'+v.id,ownerId:String(v.owner_id),title:v.title,channel:v.username,views:Number(v.views||0)+' просмотров за 7 дней',viewCount:Number(v.views||0),likes:Number(v.likes||0),time:new Date(v.created_at).toLocaleDateString('ru-RU'),duration:v.duration?new Date(v.duration*1000).toISOString().slice(14,19):'',image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',avatar:(v.username||'M').slice(0,1).toUpperCase(),avatarUrl:v.has_avatar?'https://mirvex-api.onrender.com/api/users/'+v.owner_id+'/avatar':'',avatarType:v.avatar_type||'',avatarPosition:(v.avatar_crop_x??50)+'% '+(v.avatar_crop_y??50)+'%',videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8',isPublic:true}))});
 });
 app.get('/api/studio/overview',requireDb,auth,async(req,res)=>{
