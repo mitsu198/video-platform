@@ -1027,3 +1027,10 @@ img,video{max-width:100%}
 .profile-page .profile-cover .profile-manage-gear{z-index:5;display:grid;position:absolute;right:18px;top:18px;pointer-events:auto}
 .profile-page .profile-cover .profile-manage-gear svg{width:20px;height:20px;display:block}
 @media(max-width:760px){.profile-page .profile-cover .profile-manage-gear{right:12px;top:12px}}
+
+/* Per-video settings button in creator profile */
+.profile-page .profile-videos .profile-video-item{position:relative}
+.profile-page .profile-video-settings{position:absolute;right:12px;top:12px;z-index:4;width:38px;height:38px;display:grid;place-items:center;border:1px solid #ffffff2b;border-radius:12px;background:#17151fdb;color:#fff;backdrop-filter:blur(14px);cursor:pointer;box-shadow:0 5px 18px #0006}
+.profile-page .profile-video-settings:hover{background:#30283e;border-color:#b995ff88}
+.profile-page .profile-video-settings svg{width:18px;height:18px;display:block}
+.profile-page .profile-video-open{padding-right:54px}
