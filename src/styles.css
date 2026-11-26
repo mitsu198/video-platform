@@ -1034,3 +1034,57 @@ img,video{max-width:100%}
 .profile-page .profile-video-settings:hover{background:#30283e;border-color:#b995ff88}
 .profile-page .profile-video-settings svg{width:18px;height:18px;display:block}
 .profile-page .profile-video-open{padding-right:54px}
+
+
+/* Refined creator video cards: settings button sits on the thumbnail itself. */
+.profile-page .profile-videos .profile-video-item{
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  border-radius:15px;
+  background:#17131f;
+}
+.profile-page .profile-video-open{
+  display:block;
+  width:100%;
+  min-width:0;
+  padding:0!important;
+  margin:0;
+  text-align:left;
+}
+.profile-page .profile-video-open img{
+  display:block;
+  width:100%;
+  aspect-ratio:16/9;
+  object-fit:cover;
+  border-radius:0;
+}
+.profile-page .profile-video-settings{
+  position:absolute;
+  top:10px;
+  right:10px;
+  z-index:6;
+  width:36px;
+  height:36px;
+  display:grid;
+  place-items:center;
+  padding:0;
+  border:1px solid rgba(255,255,255,.28);
+  border-radius:12px;
+  color:#fff;
+  background:rgba(18,16,25,.58);
+  -webkit-backdrop-filter:blur(16px) saturate(150%);
+  backdrop-filter:blur(16px) saturate(150%);
+  box-shadow:0 5px 18px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.12);
+  cursor:pointer;
+  transition:background .2s ease,border-color .2s ease,transform .2s ease;
+}
+.profile-page .profile-video-settings:hover{
+  background:rgba(105,78,158,.78);
+  border-color:rgba(205,180,255,.65);
+  transform:translateY(-1px);
+}
+.profile-page .profile-video-settings svg{width:17px;height:17px}
+@media(max-width:760px){
+  .profile-page .profile-video-settings{top:8px;right:8px;width:33px;height:33px;border-radius:11px}
+}
