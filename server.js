@@ -50,6 +50,8 @@ async function initDb() {
     );
     ALTER TABLE videos ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;
     ALTER TABLE videos ADD COLUMN IF NOT EXISTS is_short BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE videos ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
+    ALTER TABLE videos ADD COLUMN IF NOT EXISTS hashtags TEXT NOT NULL DEFAULT '';
     CREATE INDEX IF NOT EXISTS videos_shorts_idx ON videos(is_short,is_public,status,created_at DESC);
     CREATE TABLE IF NOT EXISTS video_reactions (video_id BIGINT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,reaction TEXT NOT NULL CHECK(reaction IN ('like','dislike')),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(video_id,user_id));
     CREATE TABLE IF NOT EXISTS video_comments (id BIGSERIAL PRIMARY KEY,video_id BIGINT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,body TEXT NOT NULL CHECK(char_length(body) BETWEEN 1 AND 1000),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
@@ -218,6 +220,17 @@ app.get('/api/public/videos', requireDb, async (_req,res) => {
     videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8', isPublic:true
   }))});
 });
+app.put('/api/videos/:id/details',requireDb,auth,async(req,res)=>{
+ const id=numericVideoId(req.params.id);
+ const title=String(req.body?.title||'').trim();
+ const description=String(req.body?.description||'').trim().slice(0,2000);
+ const hashtags=String(req.body?.hashtags||'').trim().slice(0,500);
+ if(!id)return res.status(400).json({error:'Некорректное видео'});
+ if(!title||title.length>120)return res.status(400).json({error:'Название должно содержать от 1 до 120 символов'});
+ const r=await pool.query("UPDATE videos SET title=$1,description=$2,hashtags=$3 WHERE id=$4 AND owner_id=$5 AND status='ready' RETURNING id,title,description,hashtags,is_public",[title,description,hashtags,id,req.user.id]);
+ if(!r.rowCount)return res.status(404).json({error:'Видео не найдено'});
+ res.json({ok:true,video:{id:'db-'+r.rows[0].id,title:r.rows[0].title,description:r.rows[0].description,hashtags:r.rows[0].hashtags,isPublic:r.rows[0].is_public}});
+});
 app.put('/api/videos/:id/title',requireDb,auth,async(req,res)=>{
  const id=numericVideoId(req.params.id),title=String(req.body?.title||'').trim();
  if(!id)return res.status(400).json({error:'Некорректное видео'});
@@ -268,11 +281,11 @@ app.get('/api/users/:id/profile',requireDb,async(req,res)=>{
  try{const t=(req.headers.authorization||'').replace(/^Bearer\s+/i,'');if(t)viewerId=String(jwt.verify(t,JWT_SECRET).id);}catch{}
  const [stats,vids]=await Promise.all([
   pool.query("SELECT (SELECT COUNT(*) FROM user_subscriptions WHERE followed_id=$1)::int AS followers,(SELECT COUNT(*) FROM user_subscriptions WHERE follower_id=$1)::int AS following,(SELECT COUNT(*) FROM video_reactions r JOIN videos v ON v.id=r.video_id WHERE v.owner_id=$1 AND r.reaction='like')::int AS likes,(SELECT COUNT(*) FROM videos WHERE owner_id=$1 AND is_public=TRUE AND status='ready')::int AS videos",[id]),
-  pool.query("SELECT id,title,playback_id,duration,created_at,cover,is_public FROM videos WHERE owner_id=$1 AND status='ready' AND (is_public=TRUE OR $2::text=$1::text) ORDER BY created_at DESC LIMIT 30",[id,viewerId])
+  pool.query("SELECT id,title,description,hashtags,playback_id,duration,created_at,cover,is_public FROM videos WHERE owner_id=$1 AND status='ready' AND (is_public=TRUE OR $2::text=$1::text) ORDER BY created_at DESC LIMIT 30",[id,viewerId])
  ]);
  let isFollowing=false;
  if(viewerId&&viewerId!==id){const q=await pool.query('SELECT 1 FROM user_subscriptions WHERE follower_id=$1 AND followed_id=$2',[viewerId,id]);isFollowing=!!q.rowCount;}
- res.json({user:{id:String(u.rows[0].id),username:u.rows[0].username,createdAt:u.rows[0].created_at},...stats.rows[0],videoCount:Number(stats.rows[0].videos||0),isFollowing,videos:vids.rows.map(v=>({id:'db-'+v.id,title:v.title,ownerId:id,channel:u.rows[0].username,isPublic:v.is_public,image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',avatar:u.rows[0].username.slice(0,1).toUpperCase(),videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8'}))});
+ res.json({user:{id:String(u.rows[0].id),username:u.rows[0].username,createdAt:u.rows[0].created_at},...stats.rows[0],videoCount:Number(stats.rows[0].videos||0),isFollowing,videos:vids.rows.map(v=>({id:'db-'+v.id,title:v.title,description:v.description||'',hashtags:v.hashtags||'',ownerId:id,channel:u.rows[0].username,isPublic:v.is_public,image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',avatar:u.rows[0].username.slice(0,1).toUpperCase(),videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8'}))});
 });
 app.post('/api/users/:id/subscribe',requireDb,auth,async(req,res)=>{const id=String(req.params.id);if(!/^\d+$/.test(id)||String(req.user.id)===id)return res.status(400).json({error:'Нельзя подписаться на этот профиль'});const exists=await pool.query('SELECT id FROM users WHERE id=$1',[id]);if(!exists.rowCount)return res.status(404).json({error:'Профиль не найден'});const subscribed=req.body?.subscribed===true;if(subscribed){const inserted=await pool.query('INSERT INTO user_subscriptions(follower_id,followed_id) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING follower_id',[req.user.id,id]);if(inserted.rowCount)await pool.query("INSERT INTO notifications(user_id,actor_id,actor_name,kind) VALUES($1,$2,$3,'subscriber')",[id,req.user.id,req.user.username]);}else await pool.query('DELETE FROM user_subscriptions WHERE follower_id=$1 AND followed_id=$2',[req.user.id,id]);const count=await pool.query('SELECT COUNT(*)::int AS followers FROM user_subscriptions WHERE followed_id=$1',[id]);res.json({isFollowing:subscribed,followers:count.rows[0].followers});});
 
