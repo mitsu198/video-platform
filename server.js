@@ -90,6 +90,31 @@ async function initDb() {
     CREATE INDEX IF NOT EXISTS video_views_owner_viewer_idx ON video_views(viewer_id,created_at DESC);
     CREATE TABLE IF NOT EXISTS notifications (id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,actor_id BIGINT REFERENCES users(id) ON DELETE SET NULL,actor_name TEXT NOT NULL,kind TEXT NOT NULL CHECK(kind IN ('subscriber','like','comment')),video_id BIGINT REFERENCES videos(id) ON DELETE CASCADE,video_title TEXT,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),read_at TIMESTAMPTZ);
     CREATE INDEX IF NOT EXISTS notifications_user_created_idx ON notifications(user_id,created_at DESC);
+    ALTER TABLE videos ADD COLUMN IF NOT EXISTS reward_approved BOOLEAN NOT NULL DEFAULT FALSE;
+    CREATE TABLE IF NOT EXISTS star_ledger (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      video_id BIGINT UNIQUE REFERENCES videos(id) ON DELETE SET NULL,
+      amount NUMERIC(12,1) NOT NULL CHECK(amount > 0),
+      entry_type TEXT NOT NULL CHECK(entry_type IN ('milestone_10','approved_video')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS star_ledger_user_created_idx ON star_ledger(user_id,created_at DESC);
+    CREATE TABLE IF NOT EXISTS star_claims (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      telegram_username TEXT NOT NULL,
+      profile_url TEXT NOT NULL,
+      approved_video_count INTEGER NOT NULL,
+      amount NUMERIC(12,1) NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected','paid')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      seen_at TIMESTAMPTZ,
+      reviewed_by BIGINT REFERENCES users(id) ON DELETE SET NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS star_claims_one_active_per_user_idx ON star_claims(user_id) WHERE status IN ('pending','approved');
+    CREATE INDEX IF NOT EXISTS star_claims_status_created_idx ON star_claims(status,created_at DESC);
   `);
 }
 
@@ -386,11 +411,11 @@ app.post('/api/admin/reports/:id/status',requireDb,auth,adminOnly,async(req,res)
  if(!r.rowCount)return res.status(404).json({error:'Жалоба не найдена'});res.json({ok:true,report:r.rows[0]});
 });
 app.get('/api/admin/videos',requireDb,auth,adminOnly,async(req,res)=>{
- const r=await pool.query(`SELECT v.id,v.title,v.playback_id,v.created_at,v.owner_id,v.is_public,v.cover,u.username AS owner_name
+ const r=await pool.query(`SELECT v.id,v.title,v.playback_id,v.created_at,v.owner_id,v.is_public,v.reward_approved,v.cover,u.username AS owner_name
  FROM videos v JOIN users u ON u.id=v.owner_id
  WHERE v.status='ready' AND v.playback_id IS NOT NULL
  ORDER BY v.created_at DESC LIMIT 300`);
- res.json({videos:r.rows.map(v=>({id:'db-'+v.id,title:v.title,ownerId:String(v.owner_id),ownerName:v.owner_name,isPublic:v.is_public,createdAt:v.created_at,image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=600',streamUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8'}))});
+ res.json({videos:r.rows.map(v=>({id:'db-'+v.id,title:v.title,ownerId:String(v.owner_id),ownerName:v.owner_name,isPublic:v.is_public,rewardApproved:v.reward_approved,createdAt:v.created_at,image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=600',streamUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8'}))});
 });
 app.get('/api/admin/users',requireDb,auth,adminOnly,async(req,res)=>{
   const r=await pool.query(`SELECT u.id,u.email,u.username,u.created_at,
@@ -408,6 +433,84 @@ app.get('/api/subscriptions/videos',requireDb,auth,async(req,res)=>{
    ORDER BY v.created_at DESC LIMIT 100`,[req.user.id]);
   res.json({videos:r.rows.map(v=>({id:'db-'+v.id,ownerId:String(v.owner_id),title:v.title,channel:v.username,views:'Видео канала',time:new Date(v.created_at).toLocaleDateString('ru-RU'),duration:v.duration?new Date(v.duration*1000).toISOString().slice(14,19):'',image:v.cover?'https://mirvex-api.onrender.com/api/videos/'+v.id+'/cover':'https://image.mux.com/'+v.playback_id+'/thumbnail.jpg?width=900',avatar:(v.username||'M').slice(0,1).toUpperCase(),avatarUrl:v.has_avatar?'https://mirvex-api.onrender.com/api/users/'+v.owner_id+'/avatar?v='+Date.now():'',avatarType:v.avatar_type||'',avatarPosition:(v.avatar_crop_x??50)+'% '+(v.avatar_crop_y??50)+'%',videoUrl:'https://stream.mux.com/'+v.playback_id+'.m3u8',isPublic:true}))});
 });
+
+app.get('/api/rewards/me',requireDb,auth,async(req,res)=>{
+  const [count,balance,claim,history]=await Promise.all([
+    pool.query('SELECT COUNT(*)::int AS count FROM videos WHERE owner_id=$1 AND reward_approved=TRUE',[req.user.id]),
+    pool.query('SELECT COALESCE(SUM(amount),0)::numeric(12,1) AS balance FROM star_ledger WHERE user_id=$1',[req.user.id]),
+    pool.query("SELECT id,telegram_username,status,amount,created_at FROM star_claims WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1",[req.user.id]),
+    pool.query("SELECT id,amount,entry_type,created_at FROM star_ledger WHERE user_id=$1 ORDER BY created_at DESC LIMIT 30",[req.user.id])
+  ]);
+  res.json({approvedVideos:count.rows[0].count,balance:Number(balance.rows[0].balance||0),eligible:count.rows[0].count>=10,claim:claim.rows[0]||null,history:history.rows.map(x=>({...x,amount:Number(x.amount)}))});
+});
+app.post('/api/rewards/claim',requireDb,auth,async(req,res)=>{
+  const telegramUsername=String(req.body?.telegramUsername||'').trim().replace(/^@/,'');
+  if(!/^[A-Za-z0-9_]{5,32}$/.test(telegramUsername))return res.status(400).json({error:'Укажи корректный Telegram Username'});
+  const client=await pool.connect();
+  try{
+    await client.query('BEGIN');
+    await client.query('SELECT id FROM users WHERE id=$1 FOR UPDATE',[req.user.id]);
+    const count=await client.query('SELECT COUNT(*)::int AS count FROM videos WHERE owner_id=$1 AND reward_approved=TRUE',[req.user.id]);
+    if(count.rows[0].count<10){await client.query('ROLLBACK');return res.status(400).json({error:'Для заявки нужно 10 одобренных видео'});}
+    const active=await client.query("SELECT id FROM star_claims WHERE user_id=$1 AND status IN ('pending','approved')",[req.user.id]);
+    if(active.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'У тебя уже есть активная заявка'});}
+    const balance=await client.query('SELECT COALESCE(SUM(amount),0)::numeric(12,1) AS balance FROM star_ledger WHERE user_id=$1',[req.user.id]);
+    const amount=Number(balance.rows[0].balance||0);
+    if(amount<=0){await client.query('ROLLBACK');return res.status(400).json({error:'На балансе пока нет Stars для заявки'});}
+    const profileUrl=FRONTEND_ORIGIN.replace(/\/$/,'')+'/profile/'+encodeURIComponent(String(req.user.id));
+    const inserted=await client.query("INSERT INTO star_claims(user_id,telegram_username,profile_url,approved_video_count,amount) VALUES($1,$2,$3,$4,$5) RETURNING id,status,amount,created_at",[req.user.id,telegramUsername,profileUrl,count.rows[0].count,amount]);
+    await client.query('COMMIT');
+    res.status(201).json({ok:true,claim:{...inserted.rows[0],amount:Number(inserted.rows[0].amount),telegram_username:telegramUsername}});
+  }catch(e){await client.query('ROLLBACK');if(e.code==='23505')return res.status(409).json({error:'У тебя уже есть активная заявка'});res.status(500).json({error:'Не удалось отправить заявку'});}
+  finally{client.release();}
+});
+app.get('/api/admin/reward-claims',requireDb,auth,adminOnly,async(req,res)=>{
+  const unread=await pool.query("SELECT COUNT(*)::int AS count FROM star_claims WHERE status='pending' AND seen_at IS NULL");
+  if(req.query.markSeen==='true')await pool.query("UPDATE star_claims SET seen_at=NOW() WHERE status='pending' AND seen_at IS NULL");
+  const rows=await pool.query(`SELECT c.id,c.telegram_username,c.profile_url,c.approved_video_count,c.amount,c.status,c.created_at,c.seen_at,u.username,u.id AS user_id
+    FROM star_claims c JOIN users u ON u.id=c.user_id
+    ORDER BY CASE c.status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 WHEN 'rejected' THEN 2 ELSE 3 END,c.created_at DESC LIMIT 300`);
+  res.json({claims:rows.rows.map(x=>({...x,id:String(x.id),userId:String(x.user_id),amount:Number(x.amount)})),unread:unread.rows[0].count});
+});
+app.post('/api/admin/reward-claims/:id/status',requireDb,auth,adminOnly,async(req,res)=>{
+  const status=String(req.body?.status||'');
+  if(!['approved','rejected','paid'].includes(status))return res.status(400).json({error:'Некорректный статус'});
+  const client=await pool.connect();
+  try{
+    await client.query('BEGIN');
+    const current=await client.query('SELECT id,status FROM star_claims WHERE id=$1 FOR UPDATE',[req.params.id]);
+    if(!current.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Заявка не найдена'});}
+    const old=current.rows[0].status;
+    const valid=(status==='approved'&&old==='pending')||(status==='rejected'&&old==='pending')||(status==='paid'&&old==='approved');
+    if(!valid){await client.query('ROLLBACK');return res.status(409).json({error:'Это действие недоступно для текущего статуса'});}
+    const updated=await client.query('UPDATE star_claims SET status=$1,updated_at=NOW(),reviewed_by=$2 WHERE id=$3 RETURNING id,status,amount',[status,req.user.id,req.params.id]);
+    await client.query('COMMIT');
+    res.json({ok:true,claim:{...updated.rows[0],id:String(updated.rows[0].id),amount:Number(updated.rows[0].amount)}});
+  }catch(e){await client.query('ROLLBACK');res.status(500).json({error:'Не удалось обновить заявку'});}
+  finally{client.release();}
+});
+app.post('/api/admin/videos/:id/reward-approval',requireDb,auth,adminOnly,async(req,res)=>{
+  const id=numericVideoId(req.params.id);if(!id)return res.status(400).json({error:'Некорректное видео'});
+  const client=await pool.connect();
+  try{
+    await client.query('BEGIN');
+    const video=await client.query("SELECT id,owner_id,status,is_public,reward_approved FROM videos WHERE id=$1 FOR UPDATE",[id]);
+    if(!video.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Видео не найдено'});}
+    const v=video.rows[0];
+    if(v.status!=='ready'||!v.is_public){await client.query('ROLLBACK');return res.status(400).json({error:'Видео должно быть готовым и опубликованным'});}
+    if(v.reward_approved){await client.query('ROLLBACK');return res.status(409).json({error:'Видео уже одобрено для начисления'});}
+    await client.query('UPDATE videos SET reward_approved=TRUE WHERE id=$1',[id]);
+    const count=await client.query('SELECT COUNT(*)::int AS count FROM videos WHERE owner_id=$1 AND reward_approved=TRUE',[v.owner_id]);
+    let amount=0,entryType=null;
+    if(count.rows[0].count===10){amount=15;entryType='milestone_10';}
+    else if(count.rows[0].count>10){amount=0.1;entryType='approved_video';}
+    if(amount>0)await client.query('INSERT INTO star_ledger(user_id,video_id,amount,entry_type) VALUES($1,$2,$3,$4) ON CONFLICT(video_id) DO NOTHING',[v.owner_id,id,amount,entryType]);
+    await client.query('COMMIT');
+    res.json({ok:true,rewardApproved:true,approvedVideos:count.rows[0].count,credited:amount});
+  }catch(e){await client.query('ROLLBACK');res.status(500).json({error:'Не удалось одобрить видео для наград'});}
+  finally{client.release();}
+});
+
 app.delete('/api/admin/videos/:id',requireDb,auth,adminOnly,async(req,res)=>{
  const id=numericVideoId(req.params.id);if(!id)return res.status(400).json({error:'Некорректное видео'});
  const r=await pool.query('SELECT id,asset_id FROM videos WHERE id=$1',[id]);if(!r.rowCount)return res.status(404).json({error:'Видео не найдено'});
