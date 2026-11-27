@@ -437,7 +437,7 @@ app.get('/api/subscriptions/videos',requireDb,auth,async(req,res)=>{
 app.get('/api/rewards/me',requireDb,auth,async(req,res)=>{
   const [count,balance,claim,history]=await Promise.all([
     pool.query('SELECT COUNT(*)::int AS count FROM videos WHERE owner_id=$1 AND reward_approved=TRUE',[req.user.id]),
-    pool.query('SELECT (COALESCE((SELECT SUM(amount) FROM star_ledger WHERE user_id=$1),0)-COALESCE((SELECT SUM(amount) FROM star_claims WHERE user_id=$1 AND status='paid'),0))::numeric(12,1) AS balance',[req.user.id]),
+    pool.query("SELECT (COALESCE((SELECT SUM(amount) FROM star_ledger WHERE user_id=$1),0)-COALESCE((SELECT SUM(amount) FROM star_claims WHERE user_id=$1 AND status='paid'),0))::numeric(12,1) AS balance",[req.user.id]),
     pool.query("SELECT id,telegram_username,status,amount,created_at FROM star_claims WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1",[req.user.id]),
     pool.query("SELECT id,amount,entry_type,created_at FROM star_ledger WHERE user_id=$1 ORDER BY created_at DESC LIMIT 30",[req.user.id])
   ]);
@@ -454,7 +454,7 @@ app.post('/api/rewards/claim',requireDb,auth,async(req,res)=>{
     if(count.rows[0].count<10){await client.query('ROLLBACK');return res.status(400).json({error:'Для заявки нужно 10 одобренных видео'});}
     const active=await client.query("SELECT id FROM star_claims WHERE user_id=$1 AND status IN ('pending','approved')",[req.user.id]);
     if(active.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'У тебя уже есть активная заявка'});}
-    const balance=await client.query('SELECT (COALESCE((SELECT SUM(amount) FROM star_ledger WHERE user_id=$1),0)-COALESCE((SELECT SUM(amount) FROM star_claims WHERE user_id=$1 AND status='paid'),0))::numeric(12,1) AS balance',[req.user.id]);
+    const balance=await client.query("SELECT (COALESCE((SELECT SUM(amount) FROM star_ledger WHERE user_id=$1),0)-COALESCE((SELECT SUM(amount) FROM star_claims WHERE user_id=$1 AND status='paid'),0))::numeric(12,1) AS balance",[req.user.id]);
     const amount=Number(balance.rows[0].balance||0);
     if(amount<=0){await client.query('ROLLBACK');return res.status(400).json({error:'На балансе пока нет Stars для заявки'});}
     const profileUrl=FRONTEND_ORIGIN.replace(/\/$/,'')+'/profile/'+encodeURIComponent(String(req.user.id));
