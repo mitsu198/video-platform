@@ -1547,3 +1547,5 @@ button:disabled{transform:none;filter:none;cursor:not-allowed}
 .report-status.status-paid{background:#204b3a;color:#a5efc7}
 @media(max-width:760px){.stars-promo{gap:12px;padding:16px;border-radius:16px}.stars-promo-art{flex-basis:48px;width:48px;height:48px}.stars-promo-copy b{font-size:14px}.stars-promo-copy small{font-size:11px}.stars-promo-copy em{font-size:9px}.stars-promo-cta{padding:9px 10px;font-size:10px}.stars-promo-cta svg{display:none}.rewards-content{padding:14px}.rewards-dialog{border-radius:18px}.admin-claims-summary{padding:8px 12px}}
 @media(max-width:430px){.stars-promo{flex-wrap:wrap}.stars-promo-copy{flex-basis:calc(100% - 65px)}.stars-promo-cta{margin-left:60px}.rewards-rules{grid-template-columns:1fr}}
+
+.rewards-request-details{display:grid;gap:8px;margin:4px 0 8px;padding:13px;border:1px solid #34313e;border-radius:12px;background:#20212a}.rewards-request-details>div{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px}.rewards-request-details span{color:#aaa}.rewards-request-details a{display:flex;align-items:center;gap:5px;color:#c5aaff;text-decoration:none}.rewards-request-details b{color:#f4d991}
