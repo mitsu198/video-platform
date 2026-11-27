@@ -113,7 +113,8 @@ async function initDb() {
       seen_at TIMESTAMPTZ,
       reviewed_by BIGINT REFERENCES users(id) ON DELETE SET NULL
     );
-    CREATE UNIQUE INDEX IF NOT EXISTS star_claims_one_active_per_user_idx ON star_claims(user_id) WHERE status IN ('pending','approved');
+    DROP INDEX IF EXISTS star_claims_one_active_per_user_idx;
+    CREATE UNIQUE INDEX star_claims_one_active_per_user_idx ON star_claims(user_id) WHERE status='pending';
     CREATE INDEX IF NOT EXISTS star_claims_status_created_idx ON star_claims(status,created_at DESC);
   `);
 }
@@ -437,7 +438,7 @@ app.get('/api/subscriptions/videos',requireDb,auth,async(req,res)=>{
 app.get('/api/rewards/me',requireDb,auth,async(req,res)=>{
   const [count,balance,claim,history]=await Promise.all([
     pool.query('SELECT COUNT(*)::int AS count FROM videos WHERE owner_id=$1 AND reward_approved=TRUE',[req.user.id]),
-    pool.query("SELECT (COALESCE((SELECT SUM(amount) FROM star_ledger WHERE user_id=$1),0)-COALESCE((SELECT SUM(amount) FROM star_claims WHERE user_id=$1 AND status='paid'),0))::numeric(12,1) AS balance",[req.user.id]),
+    pool.query("SELECT (COALESCE((SELECT SUM(amount) FROM star_ledger WHERE user_id=$1),0)-COALESCE((SELECT SUM(amount) FROM star_claims WHERE user_id=$1 AND status IN ('approved','paid')),0))::numeric(12,1) AS balance",[req.user.id]),
     pool.query("SELECT id,telegram_username,status,amount,created_at FROM star_claims WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1",[req.user.id]),
     pool.query("SELECT id,amount,entry_type,created_at FROM star_ledger WHERE user_id=$1 ORDER BY created_at DESC LIMIT 30",[req.user.id])
   ]);
@@ -452,9 +453,9 @@ app.post('/api/rewards/claim',requireDb,auth,async(req,res)=>{
     await client.query('SELECT id FROM users WHERE id=$1 FOR UPDATE',[req.user.id]);
     const count=await client.query('SELECT COUNT(*)::int AS count FROM videos WHERE owner_id=$1 AND reward_approved=TRUE',[req.user.id]);
     if(count.rows[0].count<10){await client.query('ROLLBACK');return res.status(400).json({error:'Для заявки нужно 10 одобренных видео'});}
-    const active=await client.query("SELECT id FROM star_claims WHERE user_id=$1 AND status IN ('pending','approved')",[req.user.id]);
+    const active=await client.query("SELECT id FROM star_claims WHERE user_id=$1 AND status='pending'",[req.user.id]);
     if(active.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'У тебя уже есть активная заявка'});}
-    const balance=await client.query("SELECT (COALESCE((SELECT SUM(amount) FROM star_ledger WHERE user_id=$1),0)-COALESCE((SELECT SUM(amount) FROM star_claims WHERE user_id=$1 AND status='paid'),0))::numeric(12,1) AS balance",[req.user.id]);
+    const balance=await client.query("SELECT (COALESCE((SELECT SUM(amount) FROM star_ledger WHERE user_id=$1),0)-COALESCE((SELECT SUM(amount) FROM star_claims WHERE user_id=$1 AND status IN ('approved','paid')),0))::numeric(12,1) AS balance",[req.user.id]);
     const amount=Number(balance.rows[0].balance||0);
     if(amount<=0){await client.query('ROLLBACK');return res.status(400).json({error:'На балансе пока нет Stars для заявки'});}
     const profileUrl=FRONTEND_ORIGIN.replace(/\/$/,'')+'/profile/'+encodeURIComponent(String(req.user.id));
@@ -481,7 +482,7 @@ app.post('/api/admin/reward-claims/:id/status',requireDb,auth,adminOnly,async(re
     const current=await client.query('SELECT id,status FROM star_claims WHERE id=$1 FOR UPDATE',[req.params.id]);
     if(!current.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Заявка не найдена'});}
     const old=current.rows[0].status;
-    const valid=(status==='approved'&&old==='pending')||(status==='rejected'&&old==='pending')||(status==='paid'&&old==='approved');
+    const valid=(status==='approved'&&old==='pending')||(status==='rejected'&&old==='pending');
     if(!valid){await client.query('ROLLBACK');return res.status(409).json({error:'Это действие недоступно для текущего статуса'});}
     const updated=await client.query('UPDATE star_claims SET status=$1,updated_at=NOW(),reviewed_by=$2 WHERE id=$3 RETURNING id,status,amount',[status,req.user.id,req.params.id]);
     await client.query('COMMIT');
